@@ -1,5 +1,6 @@
 import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
 import { markdownForWord } from './editor/mermaid-export'
+import { toBase64 } from './export/render'
 import { documentHTMLFrom } from './editor/clean-html'
 import { jumpToSourceLine } from './editor/source-line'
 import { resolveMarkdownLink } from './editor/markdown-link'
@@ -1618,6 +1619,82 @@ async function withExportLayout<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** 导出的内容根节点。摊平之后整篇都在这个元素里。 */
+function exportRoot(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('#editor .cm-content')
+}
+
+/** 导出的底色。深色主题下纸面也应该是深色，否则四周套一圈白。 */
+function exportBackground(): string {
+  const color = getComputedStyle(document.body).backgroundColor
+  return color === 'rgba(0, 0, 0, 0)' || color === 'transparent' ? '#ffffff' : color
+}
+
+/**
+ * 建议的导出文件名。
+ *
+ * 规则与外壳的 `fileio::suggest_file_name` 保持一致：有文件路径就用文件名（不带扩展名），
+ * 否则取正文第一行非空内容，去掉路径里不能用的字符，最长 60 字。两处都实现是因为外壳
+ * 拿不到渲染侧才知道的正文，而保存框要在渲染侧给不出名字时也能有个合理的默认值。
+ */
+function suggestedExportName(content: string): string {
+  if (currentFilePath) {
+    const name = currentFilePath.split(/[/\\]/).pop() ?? ''
+    const stem = name.replace(/\.[^.]+$/, '')
+    if (stem) return stem
+  }
+  const first = content.split('\n').map((line) => line.trim()).find((line) => line.length > 0)
+  if (!first) return 'untitled'
+  const heading = first.startsWith('#') ? first.replace(/^#+/, '').trim() : first
+  const text = (heading || first).replace(/[/\\:*?"<>|]/g, '').trim()
+  return text ? text.slice(0, 60) : 'untitled'
+}
+
+/**
+ * 把 Markdown 里指向本地文件的图片换成 data URL。
+ *
+ * Word 里图片必须是字节，指向磁盘的路径塞不进去。远程图片保持原样（docx 那条路会
+ * fetch 它），相对路径按当前文档所在目录解析。
+ */
+async function resolveImagesForWord(content: string, sourcePath: string | null): Promise<string> {
+  const pattern = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
+  const targets = new Set<string>()
+  for (const match of content.matchAll(pattern)) {
+    const url = match[2]
+    if (/^(https?:|data:)/i.test(url)) continue
+    targets.add(url)
+  }
+  if (targets.size === 0) return content
+
+  const resolved = new Map<string, string>()
+  await Promise.all(Array.from(targets).map(async (url) => {
+    try {
+      // 相对路径要相对文档所在目录解析，file:// 与绝对路径已经是完整的。
+      const absolute = /^(file:|\/|[a-zA-Z]:[/\\])/.test(url)
+        ? url
+        : (() => {
+          if (!sourcePath) return null
+          const directory = sourcePath.replace(/[/\\][^/\\]*$/, '')
+          return `file://${directory}/${decodeURIComponent(url)}`
+        })()
+      if (!absolute) return
+      const response = await fetch(absolute)
+      if (!response.ok) return
+      const bytes = new Uint8Array(await response.arrayBuffer())
+      const type = /\.jpe?g$/i.test(url) ? 'image/jpeg' : /\.gif$/i.test(url) ? 'image/gif' : 'image/png'
+      resolved.set(url, `data:${type};base64,${toBase64(bytes)}`)
+    } catch {
+      // 读不到就留着原样：docx 那条路会把它渲染成占位文字，而不是让整个导出失败。
+    }
+  }))
+
+  if (resolved.size === 0) return content
+  return content.replace(pattern, (whole, alt: string, url: string) => {
+    const dataUrl = resolved.get(url)
+    return dataUrl ? `![${alt}](${dataUrl})` : whole
+  })
+}
+
 function getExportSnapshot(content: string): {
   content: string
   html: string
@@ -1673,22 +1750,119 @@ async function exportCurrentHTML(): Promise<void> {
   }
 }
 
-async function exportCurrentImage(preset: 'desktop' | 'mobile'): Promise<void> {
+/**
+ * 导出的公共外壳：还原源码模式、把失败说给用户听。
+ *
+ * 为什么必须有这一层：三条导出的调用点都是菜单事件，返回值没人看。渲染侧一旦抛错
+ * （模块加载失败、字体缺失、画布超限），异常只会进 console，用户看到的就是「点了没
+ * 反应」——那和菜单坏了、功能没做无法区分。所以这里把任何错误都弹一次框。
+ */
+async function runExport(label: string, body: () => Promise<void>): Promise<void> {
   const wasSourceMode = sourceModeActive
   const sourceScrollRatio = wasSourceMode ? scrollRatio(sourceEl()) : 0
+  try {
+    await body()
+  } catch (error) {
+    // 消息必须在前面：开发模式下 Vite 会把堆栈首行换成 `@url:行:列`，只取 stack 的话
+    // 弹框里就只有一句位置，看不出到底哪儿错了（这个坑先踩在验收通道上，这里是同一个）。
+    const detail = error instanceof Error
+      ? `${error.message}\n\n${error.stack ?? ''}`
+      : String(error)
+    void window.loomark.logRendererError(`[export] ${label}: ${detail}`)
+    await window.loomark.reportExportFailure(label, detail)
+  } finally {
+    if (wasSourceMode) enterSourceMode(getContent(), sourceScrollRatio)
+  }
+}
+
+async function exportCurrentImage(preset: 'desktop' | 'mobile'): Promise<void> {
   const content = getContent()
 
-  if (wasSourceMode) {
-    exitSourceMode()
-    setMarkdownProgrammatically(content)
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  await runExport(isChinese() ? '导出图片' : 'Export Image', async () => {
+    if (sourceModeActive) {
+      exitSourceMode()
+      setMarkdownProgrammatically(content)
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+    }
+
+    // 渲染必须在 withExportLayout 之内：它负责把整篇摊平（CodeMirror 只为视口建 DOM），
+    // 出了这个范围拿到的是当前视口那一屏。
+    await withExportLayout(async () => {
+      const root = exportRoot()
+      if (!root) throw new Error('找不到编辑器内容（#editor .cm-content）')
+      // 动态载入：pdf-lib 与 docx 合计上兆，只有真要导出时才该付这份代价。
+      // 静态 import 会让每次启动都背上它们（mermaid 那次就是这么踩的）。
+      const { renderImages } = await import('./export/image')
+      const background = exportBackground()
+      const images = await renderImages(root, preset, background)
+      await window.loomark.exportImage({
+        baseName: suggestedExportName(content),
+        files: images.map(toBase64),
+      }, preset)
     })
-  }
+  })
+}
 
-  await withExportLayout(() => window.loomark.exportImage(getExportSnapshot(content), preset))
+/**
+ * 导出 PDF。
+ *
+ * 位图进 PDF 而不是真文字：中文字体嵌入是这条路的死结（一个完整中文字体 10MB 以上），
+ * 所以 PDF 里的文字不可选、不可搜。这是产品上确认过的取舍，理由见
+ * docs/export-pdf-image-plan.md。
+ */
+async function exportCurrentPDF(): Promise<void> {
+  const content = getContent()
 
-  if (wasSourceMode) enterSourceMode(content, sourceScrollRatio)
+  await runExport(isChinese() ? '导出 PDF' : 'Export PDF', async () => {
+    if (sourceModeActive) {
+      exitSourceMode()
+      setMarkdownProgrammatically(content)
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+    }
+
+    await withExportLayout(async () => {
+      const root = exportRoot()
+      if (!root) throw new Error('找不到编辑器内容（#editor .cm-content）')
+      // 动态载入，理由同图片导出：pdf-lib 不该进每个用户的启动路径。
+      const { renderPDF } = await import('./export/pdf')
+      const { bytes } = await renderPDF(root, exportBackground())
+      await window.loomark.exportPDF({
+        baseName: suggestedExportName(content),
+        base64: toBase64(bytes),
+      })
+    })
+  })
+}
+
+/**
+ * 导出 Word。
+ *
+ * 走 Markdown 而不是屏幕上的 DOM：Word 是一张白纸，屏幕上的样式（主题配色、行结构、
+ * 编辑器类名）搬过去没有意义。图表由 markdownForWord 重新用浅色调画一遍并改写成
+ * 图片引用，本地图片要转成 data URL —— Word 里图片必须是字节，磁盘路径塞不进去。
+ */
+async function exportCurrentDOCX(): Promise<void> {
+  const content = getContent()
+
+  await runExport(isChinese() ? '导出 Word' : 'Export Word', async () => {
+    // markdownForWord 把图表与公式都烧成 PNG，并把 fence / `$...$` 改写成图片引用，
+    // 图片数据在 payload.images 里（**不能丢**：丢了的话 Word 里只剩 `loomark-math-1.png`
+    // 这种取不到的引用）。
+    const payload = await markdownForWord(content, isChinese())
+    const resolved = await resolveImagesForWord(payload.content, currentFilePath)
+
+    // 动态载入，理由同图片导出：docx 不该进每个用户的启动路径。
+    const { markdownToDocx } = await import('./export/docx')
+    const bytes = await markdownToDocx({ content: resolved, images: payload.images })
+    await window.loomark.exportDOCX({
+      baseName: suggestedExportName(content),
+      base64: toBase64(bytes),
+    })
+  })
 }
 
 // 导出幻灯片 PDF: the file and the dialog belong to the main process, so it
@@ -1904,7 +2078,11 @@ async function init(): Promise<void> {
         applyVerifyParams(params)
         result = await check()
       } catch (error) {
-        failure = error instanceof Error ? (error.stack ?? error.message) : String(error)
+        // 消息在前、堆栈在后：开发模式下 Vite 会把堆栈首行换成 `@url:行:列`，
+        // 只留堆栈的话脚本收到的是一句没有内容的位置，没法判红。
+        failure = error instanceof Error
+          ? `${error.message}\n${error.stack ?? ''}`
+          : String(error)
       }
       await api.verifyReport(JSON.stringify({ ok: failure === null, result, failure }))
     })()
@@ -2051,15 +2229,9 @@ async function init(): Promise<void> {
 
   api.onMenuSave(() => { void saveCurrent() })
   api.onMenuSaveAs(() => { void saveCurrent(true) })
-  api.onMenuExportPDF(() => api.exportPDF())
+  api.onMenuExportPDF(() => { void exportCurrentPDF() })
   api.onMenuExportHTML(() => { void exportCurrentHTML() })
-  api.onMenuExportDOCX(async () => {
-    // Diagrams are drawn again for the page rather than reused from the screen
-    // (src/renderer/editor/mermaid-export.ts), so this awaits a render per
-    // diagram before the save dialog opens.
-    const payload = await markdownForWord(getContent(), isChinese())
-    await api.exportDOCX(payload)
-  })
+  api.onMenuExportDOCX(() => { void exportCurrentDOCX() })
   api.onMenuExportImage((preset) => { void exportCurrentImage(preset) })
   api.onMenuPlaySlideshow(() => { void toggleSlideshow() })
 

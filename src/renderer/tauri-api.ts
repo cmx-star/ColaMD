@@ -10,10 +10,11 @@ import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 import type {
   LoomarkApi,
+  ExportedFile,
+  ExportedImages,
   FileOpenedData,
   FileManagerName,
   ImageExportPreset,
-  ImageExportSnapshot,
   SiblingFile
 } from './platform-api'
 
@@ -163,22 +164,18 @@ export function createTauriApi(): LoomarkApi {
     listSystemFonts: async () => invoke<string[]>('list_system_fonts'),
 
     // --- Export ------------------------------------------------------------
-    exportPDF: async () => {
-      notYet('exportPDF')
-      return false
-    },
+    // 三条导出都是「渲染侧画好字节，外壳落盘」：排版知识在渲染侧，文件系统在外壳。
+    exportPDF: async (file: ExportedFile) => invoke<boolean>('export_pdf', { file }),
     exportHTML: async (snapshot: { content: string; document: string; html: string; styles: string; bodyClass: string }) =>
       invoke<boolean>('export_html', { snapshot }),
-    exportDOCX: async (payload: { content: string; images: Record<string, string> }) => {
-      void payload
-      notYet('exportDOCX')
-      return false
-    },
-    exportImage: async (snapshot: ImageExportSnapshot, preset: ImageExportPreset) => {
-      void snapshot
+    exportDOCX: async (file: ExportedFile) => invoke<boolean>('export_docx', { file }),
+    exportImage: async (images: ExportedImages, preset: ImageExportPreset) => {
       void preset
-      notYet('exportImage')
-      return false
+      return invoke<boolean>('export_image', { images })
+    },
+    reportExportFailure: async (title: string, detail: string) => {
+      // 弹框失败不该再抛：这条路本身就是为了报告失败而存在的。
+      await invoke('report_export_failure', { title, detail }).catch(() => undefined)
     },
 
     // --- Update flow --------------------------------------------------------

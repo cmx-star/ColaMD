@@ -15,8 +15,29 @@ export interface SiblingFile {
 // than to the adapter that happens to implement it.
 export type FileOpenedData = { path: string | null; content: string; fileUrl: string | null }
 export type ImageExportPreset = 'desktop' | 'mobile'
-export type ImageExportSnapshot = { html: string; styles: string; bodyClass: string; background: string }
 export type FileManagerName = 'finder' | 'explorer' | 'file-manager'
+
+/**
+ * 交给外壳落盘的产物。
+ *
+ * base64 而不是原始字节：外壳用 Tauri 的 raw payload 通道时整个请求体就是字节，命令
+ * 只能有一个参数，建议文件名就没地方放。导出是低频操作，33% 的膨胀无关紧要。
+ */
+export interface ExportedFile {
+  /** 建议的基础文件名，不带扩展名。 */
+  baseName: string
+  /** base64 编码的产物字节。 */
+  base64: string
+}
+
+/**
+ * 多张图片一次导出。超长文档一张长图放不下时按阅读页切开，这时是多个文件，
+ * 文件名依次加 `-1`、`-2` 后缀（沿用 Electron 版的编号方式）。
+ */
+export interface ExportedImages {
+  baseName: string
+  files: string[]
+}
 
 export interface LoomarkApi {
   openFile: () => Promise<{ path: string; content: string } | null>
@@ -39,10 +60,22 @@ export interface LoomarkApi {
   onOpenMarkdownLink: (callback: (request: { path: string; fragment?: string; line?: number }) => void) => void
   saveFile: (content: string, expectedPath?: string, rebuildMenu?: boolean, autosave?: boolean) => Promise<string | null>
   saveFileAs: (content: string, expectedPath?: string) => Promise<string | null>
-  exportPDF: () => Promise<boolean>
+  // 三条导出都是同一个形状：渲染侧把文档画成字节，外壳弹保存框再写盘。
+  //
+  // 分工的边界在「谁懂排版、谁有文件系统」：文档的排版知识在渲染侧（主题、公式、
+  // 图表都在那儿），系统对话框与写文件归外壳。PDF 与图片交位图，Word 交 Markdown
+  // 解析出来的 .docx —— 三种都是「字节」，所以共用一种载荷。
+  exportPDF: (file: ExportedFile) => Promise<boolean>
   exportHTML: (snapshot: { content: string; document: string; html: string; styles: string; bodyClass: string }) => Promise<boolean>
-  exportDOCX: (payload: { content: string; images: Record<string, string> }) => Promise<boolean>
-  exportImage: (snapshot: ImageExportSnapshot, preset: ImageExportPreset) => Promise<boolean>
+  exportDOCX: (file: ExportedFile) => Promise<boolean>
+  exportImage: (images: ExportedImages, preset: ImageExportPreset) => Promise<boolean>
+  /**
+   * 渲染侧的导出失败要让人看见。
+   *
+   * 排版、字体、画布都发生在渲染侧；那里出错时外壳只会看到命令没被调用，用户看到的
+   * 是「点了没反应」。所以渲染侧捕获后叫这个名字，由外壳弹一次框。
+   */
+  reportExportFailure: (title: string, detail: string) => Promise<void>
   getLanguage: () => Promise<'zh' | 'en'>
   onLanguageChanged: (callback: (language: 'zh' | 'en') => void) => void
   loadCustomTheme: () => Promise<{ name: string; css: string } | null>

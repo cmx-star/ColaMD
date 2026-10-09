@@ -232,6 +232,10 @@ fn main() {
             fonts::set_slideshow_fullscreen,
             fonts::popup_app_menu,
             export::export_html,
+            export::export_pdf,
+            export::export_image,
+            export::export_docx,
+            export::report_export_failure,
         ])
         .on_menu_event(|app, event| menu::handle_event(app, event.id().as_ref()))
         .setup(|app| {

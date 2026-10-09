@@ -29,7 +29,7 @@ const DROP_CLASSES = new Set([
   'cm-md-marker',
 ])
 
-type LineKind = 'code' | 'li' | 'quote' | 'hr' | 'table' | 'empty' | 'p' | `h${1 | 2 | 3 | 4 | 5 | 6}`
+type LineKind = 'code' | 'li' | 'quote' | 'hr' | 'table' | 'empty' | 'figure' | 'p' | `h${1 | 2 | 3 | 4 | 5 | 6}`
 
 function escapeText(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -44,6 +44,14 @@ function lineKind(line: HTMLElement): LineKind {
   for (let level = 1; level <= 6; level++) {
     if (classes.contains(`cm-md-atxheading${level}`)) return `h${level}` as LineKind
   }
+  // mermaid 图与块级公式**必须排在 codeblock 之前**判定。
+  //
+  // 它们是从围栏代码块变来的，所以那一行同时带着 `cm-md-codeblock` —— 先按 code 处理的话，
+  // 会去取这一行的文字，而文字已经被 widget 换掉了，于是导出成 `<pre><code></code></pre>`：
+  // **一个空代码块**。表现就是「导出的 HTML / Word 里图表不见了」，而屏幕上一切正常
+  // （2026-10-09 由用户对比手机版图片发现：图片走 DOM 快照，图表在；HTML / Word 走这条
+  // 语义化路径，图表被吞了）。
+  if (line.querySelector('.cm-md-mermaid') || line.querySelector('.cm-md-math-block')) return 'figure'
   if (classes.contains('cm-md-codeblock')) return 'code'
   if (classes.contains('cm-md-blockquote')) return 'quote'
   if (classes.contains('cm-md-hr')) return 'hr'
@@ -188,6 +196,9 @@ function renderGroup(kind: LineKind, lines: HTMLElement[]): string {
     return clone.outerHTML
   }
   if (kind === 'hr') return '<hr>'
+  // 图表与块级公式：widget 已经是能独立成立的 HTML（mermaid 的 `<svg>`、KaTeX 的 DOM），
+  // 原样带走，外面套一层 `<figure>` 表明它是独立成块的一张图。
+  if (kind === 'figure') return `<figure>${lineHTML(lines[0])}</figure>`
   // 空行在 markdown 里只是段落分隔，元素本身已经把它表达出来了。
   // 再输出一个 `<p><br></p>` 就是**多一段**：粘到 Typora 里段落之间会凭空多一行
   //（2026-10-06 报的），导出的 HTML 在浏览器里同样多一截空白。

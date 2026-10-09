@@ -22,6 +22,9 @@ time = { version = "0.3", features = ["local-offset"] }
 tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
 tauri-plugin-clipboard-manager = "2.1.0-beta.7"
 tauri-plugin-updater = "2.0.0-rc.4"
+# 导出 PDF / 图片 / Word 时渲染侧把产物以 base64 交过来（见 export.rs）。
+# 版本跟随依赖树里已有的那份，不引入重复依赖。
+base64 = "0.22"
 
 [profile.release]
 codegen-units = 1

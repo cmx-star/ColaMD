@@ -22,7 +22,9 @@
     "preview:web": "vite preview --config vite.web.config.ts",
     "tauri": "tauri",
     "check:theme-colors": "node scripts/check-theme-colors.mjs",
-    "verify:export-pdf": "node scripts/verify-export-pdf.mjs",
+    "verify:export-image": "COLAMD_VERIFY_CHECK=export-image node scripts/verify-export.mjs",
+    "verify:export-pdf": "COLAMD_VERIFY_CHECK=export-pdf node scripts/verify-export.mjs",
+    "verify:export-word": "COLAMD_VERIFY_CHECK=export-docx node scripts/verify-export.mjs",
     "verify:features": "node scripts/verify-features.mjs",
     "verify:image-export": "node scripts/verify-image-export.mjs",
     "verify:links": "node scripts/verify-links.mjs",
@@ -38,7 +40,11 @@
     "@tauri-apps/api": "^2.12.1",
     "docx": "^9.7.1",
     "katex": "^0.16.47",
-    "mermaid": "^11.17.0"
+    "mermaid": "^11.17.0",
+    "pdf-lib": "^1.17.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.4",
