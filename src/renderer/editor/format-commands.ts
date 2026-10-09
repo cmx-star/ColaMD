@@ -95,7 +95,9 @@ function toggleList(view: EditorView, ordered: boolean): void {
     })
     .join('\n')
 
-  view.dispatch({ changes: { from, to, insert: next } })
+  // `userEvent` 不能省：list-renumber 的过滤器只认用户自己的编辑，漏了这一条
+  // 序号重排就整个不生效（而且不会报错）。
+  view.dispatch({ changes: { from, to, insert: next }, userEvent: 'input' })
   view.focus()
 }
 

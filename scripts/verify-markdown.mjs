@@ -99,6 +99,10 @@ const CASES = [
   ['bullet star marker', '* a\n* b\n'],
   ['bullet plus marker', '+ a\n+ b\n'],
   ['ordered list', '1. a\n2. b\n'],
+  // 序号和实际位置对不上（用户删过一项、或别的工具写的）：打开再保存也必须原样。
+  // 序号只在用户增删列表项时写回（list-renumber.ts），打开文件不算编辑。
+  ['ordered list with stale numbers', '1. a\n3. b\n4. c\n'],
+  ['ordered list starting above one', '5. a\n6. b\n'],
   ['nested list', '- a\n  - b\n'],
   ['ordered nested list', '1. a\n   1. b\n'],
   ['mixed nested list', '- a\n  1. b\n'],

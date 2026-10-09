@@ -118,6 +118,18 @@ function lineHTML(line: HTMLElement): string {
 }
 
 /**
+ * 开一个列表标签。
+ *
+ * 有序列表的起点由第一项写的数字决定（CommonMark 只认它，后面的数字一律重排，
+ * 所以 `<li>` 里不带 `value`）。这里读的是渲染后的那一份，第一项的序号一定就是原文。
+ */
+function listTag(line: HTMLElement, ordered: boolean): string {
+  if (!ordered) return '<ul>'
+  const start = Number.parseInt(line.querySelector('.cm-md-listmark')?.textContent ?? '', 10)
+  return Number.isFinite(start) && start !== 1 ? `<ol start="${start}">` : '<ol>'
+}
+
+/**
  * 列表 → `<ul>` / `<ol>`。
  *
  * 嵌套的列表必须是父 `<li>` 的孩子（`<li>父<ul><li>子</li></ul></li>`）。写成
@@ -137,11 +149,11 @@ function renderList(lines: HTMLElement[]): string {
       html += `</li></${tagOf(open.pop()!.ordered)}>`
     }
     if (open.length === 0 || open[open.length - 1].depth < depth) {
-      html += `<${tagOf(ordered)}>`
+      html += listTag(line, ordered)
       open.push({ depth, ordered })
     } else if (open[open.length - 1].ordered !== ordered) {
       // 同一层换了列表类型
-      html += `</li></${tagOf(open.pop()!.ordered)}><${tagOf(ordered)}>`
+      html += `</li></${tagOf(open.pop()!.ordered)}>${listTag(line, ordered)}`
       open.push({ depth, ordered })
     } else {
       html += '</li>'

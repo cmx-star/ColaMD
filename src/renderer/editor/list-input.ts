@@ -36,6 +36,7 @@ function continueList(view: EditorView): boolean {
       changes: { from: line.from, to: line.to, insert: '' },
       selection: { anchor: line.from },
       scrollIntoView: true,
+      userEvent: 'input',
     })
     return true
   }
@@ -48,6 +49,7 @@ function continueList(view: EditorView): boolean {
     changes: { from: range.head, insert },
     selection: { anchor: range.head + insert.length },
     scrollIntoView: true,
+    userEvent: 'input',
   })
   return true
 }
@@ -74,6 +76,7 @@ function indentListItem(view: EditorView, direction: 1 | -1): boolean {
       changes: { from: line.from, insert: INDENT },
       selection: { anchor: range.head + INDENT.length },
       scrollIntoView: true,
+      userEvent: 'input',
     })
     return true
   }
@@ -85,6 +88,7 @@ function indentListItem(view: EditorView, direction: 1 | -1): boolean {
     changes: { from: line.from, to: line.from + width, insert: '' },
     selection: { anchor: Math.max(line.from, range.head - width) },
     scrollIntoView: true,
+    userEvent: 'input',
   })
   return true
 }
