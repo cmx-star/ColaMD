@@ -10,7 +10,8 @@
 
 import { PDFDocument } from 'pdf-lib'
 
-import { canvasToPNG, cropCanvas, renderToCanvas } from './render'
+import { MAX_CAPTURE_EDGE_PX, canvasToPNG, cropCanvas, prepareDocument, renderPrepared } from './render'
+import { measureBlocks, planBreaks } from './pagination'
 
 /** A4 纵向，单位 pt。 */
 const A4_WIDTH = 595.28
@@ -26,37 +27,85 @@ export interface PdfResult {
 /**
  * 把文档渲染成 PDF。
  *
- * 内容短于一页时缩放到页宽；长于一页时按 A4 的正文高度切页，每页一张位图。
+ * 分页不再按固定像素高度硬切，而是**避开块级元素**：切点从「这一页最多能装到哪」往前
+ * 退到最近的合法断点，表格、图片、公式、图表不会被拦腰截断，标题也不会孤零零留在页尾
+ * （2026-10-09 报的）。判据见 pagination.ts。
+ *
+ * 这里按文档高度分两条路：
+ *
+ *   · **装得下捕获上限**：整篇渲一张画布再按断点裁切。裁切不重排，与屏幕完全一致。
+ *   · **装不下**（超过 16384 设备像素）：逐页渲染。原来的实现在这种情况下会直接抛错
+ *     「内容太高，一张画布放不下」，长文档根本导不出来；逐页渲染则永远不需要一张巨画布，
+ *     因为每页都是独立画出来的。
+ *
+ * 两条路都只 `prepareDocument` 一次：内联样式 + 序列化是导出里最贵的一步，逐页渲染时
+ * 每页复用同一份素材，只改 SVG 的视口与偏移（见 render.ts 的 renderPrepared）。
  */
 export async function renderPDF(element: HTMLElement, background: string): Promise<PdfResult> {
-  const rendered = await renderToCanvas(element, { scale: 2, background })
-
+  const scale = 2
   const contentWidth = A4_WIDTH - MARGIN * 2
   const contentHeight = A4_HEIGHT - MARGIN * 2
-  const scale = rendered.scale
-  // 位图的一个 CSS 像素对应多少 pt，按页宽算。
-  const ptPerCssPx = contentWidth / rendered.width
-  const contentPtHeight = rendered.height * ptPerCssPx
+
+  // 准备一次：拿到整篇宽高、内联字体后的样式、序列化好的 body。
+  const prepared = await prepareDocument(element)
+  const { width, fullHeight: height } = prepared
+
+  // 位图的一个 CSS 像素对应多少 pt，按页宽算；一页能装多少 CSS 像素。
+  const ptPerCssPx = contentWidth / width
+  const cssPerPage = contentHeight / ptPerCssPx
+
+  // 块边界只在分页时用得上。
+  const { blocks, lineStops } = measureBlocks(element)
+  const plan = planBreaks(blocks, lineStops)
+
+  // 断点序列：从 0 开始，每次往前找一个合法断点，直到到达文末。
+  const cuts: number[] = [0]
+  // 防死循环：页数不可能超过「内容高度 / 8px」这个上限。
+  const maxPages = Math.max(1, Math.ceil(height / 8) + 2)
+  while (cuts[cuts.length - 1] < height - 0.5 && cuts.length <= maxPages) {
+    const start = cuts[cuts.length - 1]
+    const limit = start + cssPerPage
+    if (limit >= height) {
+      cuts.push(height)
+      break
+    }
+    const next = plan.nextBreak(start, limit)
+    // nextBreak 保证 >= start；真出现相等就往前推一个像素，避免空转。
+    cuts.push(next > start ? next : Math.min(start + 1, height))
+  }
+  if (cuts.length <= 1) cuts.push(Math.max(1, height))
 
   const pdf = await PDFDocument.create()
   pdf.setTitle('loomark export')
   pdf.setProducer('loomark')
 
-  const pageCount = Math.max(1, Math.ceil(contentPtHeight / contentHeight))
-  // 一页能装多少 CSS 像素的内容。
-  const cssPerPage = contentHeight / ptPerCssPx
+  // 一张画布放不下整篇时，逐段渲染：每页单独画一张，永远不需要巨画布。
+  // 放得下就整篇渲一次再裁切，省掉每页一次的光栅化开销。
+  const wholeFits = width * scale <= MAX_CAPTURE_EDGE_PX && height * scale <= MAX_CAPTURE_EDGE_PX
+  const whole = wholeFits ? await renderPrepared(prepared, scale, background, null) : null
 
-  for (let index = 0; index < pageCount; index++) {
-    const top = index * cssPerPage
-    const sliceHeight = Math.min(cssPerPage, rendered.height - top)
-    if (sliceHeight <= 0) break
+  for (let index = 0; index < cuts.length - 1; index++) {
+    const top = cuts[index]
+    const bottom = Math.min(cuts[index + 1], height)
+    const sliceHeight = bottom - top
+    if (sliceHeight <= 0) continue
 
-    const slice = cropCanvas(
-      rendered.canvas,
-      Math.round(top * scale),
-      Math.max(1, Math.round(sliceHeight * scale)),
-    )
+    let slice: HTMLCanvasElement
+    if (whole) {
+      slice = cropCanvas(
+        whole.canvas,
+        Math.round(top * scale),
+        Math.max(1, Math.round(sliceHeight * scale)),
+      )
+    } else {
+      const page = await renderPrepared(prepared, scale, background, { top, height: sliceHeight })
+      slice = page.canvas
+    }
     const png = await canvasToPNG(slice)
+    // 每页转出 PNG 字节后主动清空画布，让浏览器能及时回收：长文档几十页连续创建
+    // 2x 高清画布，不清会积压在显存里，峰值过高可能白屏。
+    slice.width = 0
+    slice.height = 0
 
     const page = pdf.addPage([A4_WIDTH, A4_HEIGHT])
     const embedded = await pdf.embedPng(png)
@@ -70,5 +119,5 @@ export async function renderPDF(element: HTMLElement, background: string): Promi
     })
   }
 
-  return { bytes: await pdf.save(), pages: pageCount }
+  return { bytes: await pdf.save(), pages: cuts.length - 1 }
 }

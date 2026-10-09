@@ -1,6 +1,6 @@
 import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
 import { markdownForWord } from './editor/mermaid-export'
-import { toBase64 } from './export/render'
+import { toBase64 } from './export/base64'
 import { documentHTMLFrom } from './editor/clean-html'
 import { jumpToSourceLine } from './editor/source-line'
 import { resolveMarkdownLink } from './editor/markdown-link'
@@ -1760,6 +1760,7 @@ async function exportCurrentHTML(): Promise<void> {
 async function runExport(label: string, body: () => Promise<void>): Promise<void> {
   const wasSourceMode = sourceModeActive
   const sourceScrollRatio = wasSourceMode ? scrollRatio(sourceEl()) : 0
+  const stopBanner = showExportBanner(label)
   try {
     await body()
   } catch (error) {
@@ -1771,7 +1772,46 @@ async function runExport(label: string, body: () => Promise<void>): Promise<void
     void window.loomark.logRendererError(`[export] ${label}: ${detail}`)
     await window.loomark.reportExportFailure(label, detail)
   } finally {
+    stopBanner()
     if (wasSourceMode) enterSourceMode(getContent(), sourceScrollRatio)
+  }
+}
+
+/**
+ * 导出提示延迟出现的时间。
+ *
+ * 实测一份十小节的文档整条导出约 0.9 秒（PDF 那条路的编码占 96%），所以取一个明显
+ * 低于它的值：短导出根本看不到提示，长导出不至于等到用户已经怀疑「点了没反应」。
+ */
+const EXPORT_BANNER_DELAY_MS = 200
+
+/**
+ * 导出期间的那个提示。
+ *
+ * 为什么需要它：导出原来是**完全没有进行中反馈**的——成功不响，失败才弹框。长文档
+ * 导出要十几秒（45 小节那篇实测 7.4 秒），这段时间里界面上什么都不动，用户分不清
+ * 「在导出」和「点了没反应」。
+ *
+ * 延迟出现是实测定的：立刻显示会让快速导出闪一下白光，比不显示更烦。等一小会还没有
+ * 结束才出现，短导出就完全看不到它。
+ *
+ * 返回一个收尾函数，调用方在 `finally` 里叫它。
+ */
+function showExportBanner(label: string): () => void {
+  const banner = document.getElementById('export-banner')
+  const text = document.getElementById('export-banner-text')
+  if (!banner || !text) return () => undefined
+
+  text.textContent = label
+  let shown = false
+  const timer = setTimeout(() => {
+    shown = true
+    banner.hidden = false
+  }, EXPORT_BANNER_DELAY_MS)
+
+  return () => {
+    clearTimeout(timer)
+    if (shown) banner.hidden = true
   }
 }
 

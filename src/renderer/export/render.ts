@@ -31,6 +31,13 @@ export interface RenderOptions {
   scale?: number
   /** 内容背景色，PDF 页底色与 PNG 底都用它。 */
   background?: string
+  /**
+   * 只渲染内容的一段竖直区间（CSS 像素，相对内容顶部）。
+   *
+   * 给超长文档用：一张画布单边上限 16384 设备像素，整篇渲染会撞上限。分页导出时逐段
+   * 调用，每段都远低于上限。不传就是整篇。
+   */
+  slice?: { top: number; height: number }
 }
 
 /** 把样式表里 @font-face 的字体读成 data URL，缓存住：一次导出可能要渲染好几页。 */
@@ -260,26 +267,31 @@ export function escapeForXML(text: string): string {
 }
 
 /**
- * 把一个元素渲染成画布。
+ * 把文档**准备**成可以渲染的素材：内联样式后的 body、内联字体后的样式表、整篇宽高。
  *
- * 高度由元素的 scrollHeight 决定，所以调用方要先把文档摊平（print-layout 的
- * enterPaperLayout 做这件事），否则拿到的是视口那一屏。
+ * 准备是导出里最贵的一步——`inlineStyles` 克隆整篇 DOM 并逐节点 `getComputedStyle`，
+ * `styleTextWithFontsInlined` 遍历所有样式表并重写 @font-face。超长文档逐页渲染时，
+ * 这一步只需做一次，之后每页只改 SVG 的视口与偏移。所以把它单独拎出来，供逐页路径复用。
  */
-export async function renderToCanvas(
-  element: HTMLElement | null,
-  options: RenderOptions = {},
-): Promise<RenderedCanvas> {
-  const root = element ?? document.querySelector<HTMLElement>('#editor .cm-content') ?? document.body
-  const scale = options.scale ?? Math.min(window.devicePixelRatio || 1, 2)
-  const background = options.background ?? getComputedStyle(document.body).backgroundColor ?? '#ffffff'
+export interface PreparedDocument {
+  /** 内联字体后的样式表文本（未做 XML 转义）。 */
+  styles: string
+  /** 内联样式后、序列化好的整篇 body。 */
+  body: string
+  /** 整篇 CSS 宽度。 */
+  width: number
+  /** 整篇 CSS 高度。 */
+  fullHeight: number
+}
 
+export async function prepareDocument(root: HTMLElement): Promise<PreparedDocument> {
   await document.fonts.ready.catch(() => undefined)
   await waitForImages(root)
   await nextFrame()
 
   const width = Math.ceil(root.scrollWidth || root.getBoundingClientRect().width)
-  const height = Math.ceil(root.scrollHeight || root.getBoundingClientRect().height)
-  if (width <= 0 || height <= 0) throw new Error('没有可导出的内容')
+  const fullHeight = Math.ceil(root.scrollHeight || root.getBoundingClientRect().height)
+  if (width <= 0 || fullHeight <= 0) throw new Error('没有可导出的内容')
 
   // 每步都带上名字：这几种失败的原因完全不同（字体没拿到、序列化坏了、SVG 解码失败、
   // 画布超限），而它们最终都只是「导出没完成」。名字进弹框，才能一眼看出该修哪儿。
@@ -287,19 +299,45 @@ export async function renderToCanvas(
   try {
     styles = await styleTextWithFontsInlined()
   } catch (error) {
-    throw new Error(`收集样式失败（${width}×${height}）：${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`收集样式失败（${width}×${fullHeight}）：${error instanceof Error ? error.message : String(error)}`)
   }
 
   let body = ''
   try {
     body = new XMLSerializer().serializeToString(inlineStyles(root))
   } catch (error) {
-    throw new Error(`序列化文档失败（${width}×${height}）：${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`序列化文档失败（${width}×${fullHeight}）：${error instanceof Error ? error.message : String(error)}`)
   }
+
+  return { styles, body, width, fullHeight }
+}
+
+/**
+ * 把一篇**已经准备好**的文档的一段竖直区间光栅化成画布。
+ *
+ * `slice` 为 null 时渲染整篇；否则只渲染 `[top, top+height)` 这一段。无论哪种，内容都
+ * 按整篇排版（同一个 width），只是 SVG 高度收窄、内容整体上移 offset，所以行高、表格
+ * 边框都不会因为切片而变。
+ */
+export async function renderPrepared(
+  prepared: PreparedDocument,
+  scale: number,
+  background: string,
+  slice: { top: number; height: number } | null,
+): Promise<RenderedCanvas> {
+  const { styles, body, width, fullHeight } = prepared
+  // 要画的这一段高度。不指定就画整篇。
+  const offset = slice ? Math.max(0, Math.min(slice.top, fullHeight)) : 0
+  const height = slice
+    ? Math.max(1, Math.ceil(Math.min(slice.height, fullHeight - offset)))
+    : fullHeight
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`
     + `<foreignObject width="100%" height="100%">`
-    + `<div xmlns="http://www.w3.org/1999/xhtml"><style>${escapeForXML(styles)}</style>${body}</div>`
+    + `<div xmlns="http://www.w3.org/1999/xhtml" style="height:${height}px;overflow:hidden">`
+    + `<style>${escapeForXML(styles)}</style>`
+    + `<div style="margin-top:${-offset}px">${body}</div>`
+    + `</div>`
     + `</foreignObject></svg>`
 
   const image = new Image()
@@ -351,6 +389,28 @@ export async function renderToCanvas(
   return { canvas, width, height, scale }
 }
 
+/**
+ * 把一个元素渲染成画布。
+ *
+ * 高度由元素的 scrollHeight 决定，所以调用方要先把文档摊平（print-layout 的
+ * enterPaperLayout 做这件事），否则拿到的是视口那一屏。
+ *
+ * 短文档（装得下一张画布）直接整篇渲一次；长文档的逐页渲染应改用 `prepareDocument` +
+ * `renderPrepared` 复用素材，避免每一页都重做内联与序列化。
+ */
+export async function renderToCanvas(
+  element: HTMLElement | null,
+  options: RenderOptions = {},
+): Promise<RenderedCanvas> {
+  const root = element ?? document.querySelector<HTMLElement>('#editor .cm-content') ?? document.body
+  const scale = options.scale ?? Math.min(window.devicePixelRatio || 1, 2)
+  const background = options.background ?? getComputedStyle(document.body).backgroundColor ?? '#ffffff'
+  const slice = options.slice ?? null
+
+  const prepared = await prepareDocument(root)
+  return renderPrepared(prepared, scale, background, slice)
+}
+
 /** 画布的一部分，用来做分页。 */
 export function cropCanvas(source: HTMLCanvasElement, y: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
@@ -377,11 +437,3 @@ export function canvasToPNG(canvas: HTMLCanvasElement): Promise<Uint8Array> {
 
 /** 捕获表面单边上限。Electron 版实测 16384 有图、16800 返回空，这里的判据用设备像素。 */
 export const MAX_CAPTURE_EDGE_PX = 16384
-
-export function toBase64(bytes: Uint8Array): string {
-  let binary = ''
-  for (let offset = 0; offset < bytes.length; offset += 8192) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192))
-  }
-  return btoa(binary)
-}

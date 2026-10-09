@@ -90,7 +90,8 @@ export async function runExportCheck(): Promise<ExportCheckResult> {
 
   let result: ExportCheckResult
   try {
-    const { renderToCanvas, toBase64: encode } = await import('../export/render')
+    const { renderToCanvas } = await import('../export/render')
+    const { toBase64: encode } = await import('../export/base64')
     const { renderImages } = await import('../export/image')
     const { renderPDF } = await import('../export/pdf')
     const { markdownToDocx } = await import('../export/docx')

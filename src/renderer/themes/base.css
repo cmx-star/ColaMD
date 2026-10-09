@@ -1200,6 +1200,64 @@ body.web-playground *::-webkit-scrollbar-corner {
   opacity: 0.9;
 }
 
+/* Export progress banner.
+ *
+ * Same floating recipe as #update-banner (same corner, same surface, same border and
+ * shadow) because it is the same kind of thing: a weak, non-blocking status. It only
+ * differs in having no action and no dismiss, since an export is short and clears
+ * itself. A button here would only be one more thing to look at.
+ *
+ * Sits above the update banner so a running export is never hidden by an update
+ * notice that happens to be up at the same time. */
+#export-banner {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  color: var(--text-color);
+  font-size: 13px;
+  z-index: 101;
+}
+
+#export-banner[hidden] {
+  display: none;
+}
+
+#export-banner-text {
+  white-space: nowrap;
+}
+
+/* A spinner, not a progress bar: the work is one opaque canvas render per page, so
+   there is no honest percentage to show. A bar that jumped 0-100 would be inventing
+   a number the renderer does not have. */
+#export-banner::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--text-color) 22%, transparent);
+  border-top-color: var(--text-muted);
+  animation: export-spin 0.7s linear infinite;
+}
+
+@keyframes export-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Respect a user who asked for less motion: keep the indicator, drop the spin. */
+@media (prefers-reduced-motion: reduce) {
+  #export-banner::before {
+    animation: none;
+  }
+}
+
 /* Update banner (weak, non-blocking) */
 #update-banner {
   position: fixed;
@@ -1394,6 +1452,7 @@ body.presenting #panel-resizer,
 body.presenting #source-editor,
 body.presenting #hover-tip,
 body.presenting #update-banner,
+body.presenting #export-banner,
 body.presenting #editor .code-copy-btn,
 body.presenting #editor > .footnote-preview {
   display: none !important;

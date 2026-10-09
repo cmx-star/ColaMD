@@ -221,6 +221,71 @@ const MEASURE = `(() => {
       color: colorOf(q('.cm-md-frontmatter')[0]),
       bodyColor: colorOf(document.querySelector('#editor .cm-content'))
     },
+    // PDF 分页：切点必须避开块级元素（表格、图片、公式、图表）。
+    //
+    // 原来按固定像素高度硬切，实测会把一个表格拦腰截断（切点落在 1892，而那个表格是
+    // 1892 到 2040）。这条断言把「切点不与任何 atomic 块相交」固定下来，改动分页逻辑时
+    // 它会立刻变红，而不是等到用户拿到一份切断的 PDF。判据与 renderer 侧同源：
+    // 这里重算一遍断点，用的是同一套规则（见 src/renderer/export/pagination.ts）。
+    pagination: (() => {
+      const root = document.querySelector('#editor .cm-content')
+      if (!root) return { available: false }
+      const base = root.getBoundingClientRect().top
+      const r = (el) => el.getBoundingClientRect()
+      const atomic = []
+      for (const sel of ['.cm-md-table-widget', '.cm-md-math-block', '.katex-display', '.cm-md-mermaid', '.cm-md-image', '.cm-md-html-block']) {
+        for (const el of q(sel)) {
+          const rect = r(el)
+          if (rect.height > 0) atomic.push({ top: rect.top - base, bottom: rect.bottom - base })
+        }
+      }
+      const stops = []
+      for (const el of q('.cm-line')) {
+        const rect = r(el)
+        if (rect.height > 0) { stops.push(rect.top - base); stops.push(rect.bottom - base) }
+      }
+      // 表格行也是合法断点：比一页还高的表格内部没有 .cm-line，只能按 tr 断。
+      for (const el of q('.cm-md-table-widget tr')) {
+        const rect = r(el)
+        if (rect.height > 0) stops.push(rect.top - base)
+      }
+      // 与 pagination.ts 一致：去重再排序，相邻行共享的边只留一个。
+      const sorted = Array.from(new Set(stops)).sort((a, b) => a - b)
+      const floorStop = (v) => {
+        let best = -1
+        for (const s of sorted) { if (s <= v) best = s; else break }
+        return best === -1 ? v : best
+      }
+      const blockAt = (pos) => atomic.find((b) => pos > b.top && pos < b.bottom) || null
+      // A4 纵向、48pt 页边距，与 export/pdf.ts 一致。
+      const contentWidth = 595.28 - 96
+      const contentHeight = 841.89 - 96
+      const width = root.scrollWidth
+      const height = root.scrollHeight
+      const ptPerCssPx = contentWidth / width
+      const cssPerPage = contentHeight / ptPerCssPx
+      const cuts = [0]
+      let guard = 0
+      while (cuts[cuts.length - 1] < height - 0.5 && guard++ < 5000) {
+        const start = cuts[cuts.length - 1]
+        const limit = start + cssPerPage
+        if (limit >= height) { cuts.push(height); break }
+        const covering = blockAt(limit)
+        let next = limit
+        if (covering) {
+          const snapped = floorStop(covering.top)
+          if (snapped > start) next = snapped
+          else if (covering.top <= start) { const inside = floorStop(limit); next = inside > start ? inside : limit }
+          else next = covering.top > start ? covering.top : limit
+        }
+        cuts.push(next > start ? next : Math.min(start + 1, height))
+      }
+      let broken = 0
+      for (let i = 1; i < cuts.length - 1; i++) {
+        for (const b of atomic) if (cuts[i] > b.top + 0.5 && cuts[i] < b.bottom - 0.5) broken++
+      }
+      return { available: true, pages: cuts.length - 1, atomic: atomic.length, broken }
+    })(),
     footnote: {
       refs: q('.cm-md-footnote-ref').length,
       previewCard: q('.footnote-preview').length,
@@ -532,6 +597,9 @@ function main() {
       check('待办复选框', m.list.tasks >= 2 && m.list.checked >= 1, `tasks=${m.list.tasks} checked=${m.list.checked}`)
       check('表格渲染', m.table.realTables >= 1 && m.table.cells >= 2,
         `表格=${m.table.tables} 真 table=${m.table.realTables} cells=${m.table.cells}`)
+      check('PDF 分页不切断块级元素',
+        m.pagination.available === true && m.pagination.broken === 0,
+        `页数=${m.pagination.pages} 整块=${m.pagination.atomic} 被切断=${m.pagination.broken}`)
       check('引用渲染', m.quote.count >= 1 && m.quote.raw === false, `count=${m.quote.count} 露 >: ${m.quote.raw}`)
       check('分隔线渲染', m.hr.count >= 1, `hr=${m.hr.count}`)
       check('公式渲染', m.math.katex >= 2, `katex=${m.math.katex} block=${m.math.block} error=${m.math.error}`)

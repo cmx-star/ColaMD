@@ -46,6 +46,40 @@ The two items below are the ones actually blocking us. Everything else on this p
 
 These features are implemented on `main` and await release verification.
 
+### PDF export: page breaks avoid block elements
+
+**Source:** reported 2026-10-09 (Chinese: "PDF 分页会切断标题和表格")
+
+**Status:** the PDF export used to page the document by cutting at a fixed pixel height, with no
+knowledge of document structure, so a table could be sliced in half across two pages (measured: a
+cut at 1892 CSS px landing inside a table spanning 1892 to 2040) and a heading could be left alone
+at the foot of a page. Breaks are now computed against the laid-out blocks: a cut that would land
+inside a table, formula, diagram, image or HTML block is pulled back to that block's top edge, and
+cuts only ever fall on line boundaries. A block taller than one page still has to break; it breaks
+at a line boundary, so a reader can see it continues and no content is lost. Measured on a fixture
+whose tables straddle the page boundary: two broken tables before, zero after.
+
+### PDF and image export: documents taller than one capture surface
+
+**Source:** reported 2026-10-09
+
+**Status:** a document taller than 16384 device pixels used to fail outright with
+"内容太高，一张画布放不下" and produce no file at all (measured: a 45-section document at 66616 device
+pixels). PDF export now renders page by page whenever the whole document would not fit one canvas,
+so no oversized canvas is ever created; a 90-section document now exports as a complete 17-page PDF.
+The per-slice rendering path (`renderToCanvas` with `slice`) is shared with the image export.
+
+### Export progress indicator
+
+**Source:** reported 2026-10-09 (Chinese: "导出最好加个 loading")
+
+**Status:** export had no in-progress feedback at all: success was silent and only failure produced a
+dialog. A weak floating indicator now appears during export, using the same recipe as the update
+banner. It is delayed by 200ms because a measured ten-section export finishes in about 0.9 seconds,
+and an indicator that flashes on every quick export is worse than none. It carries a spinner rather
+than a percentage because the work is one opaque canvas render per page, so there is no honest
+number to show.
+
 ### Footnote hover preview
 
 **Source:** [#25](https://github.com/marswaveai/loomark/issues/25)
@@ -224,6 +258,43 @@ Evidence used:
 Rule kept: exactly nine cards. The order is documented in an HTML comment above the card list on the gh-pages branch.
 
 ## Candidates
+
+### Selecting text inside a rendered table
+
+**Source:** reported 2026-10-09 (Chinese: "md 渲染模式没法选中表格文字")
+
+**Status: OPEN — not scheduled, not declined.** A reader cannot drag-select the text inside a
+rendered table. The cause is understood and measured; what is missing is a decision about which
+trade to make, so this is recorded here rather than closed.
+
+The rendered table is a block `WidgetType` replacement: the table occupies one document range, and
+the text inside it belongs to no document position. Dragging over it does produce a DOM selection,
+but CodeMirror recomputes the selection from pointer coordinates on `mouseup`
+(`MouseSelection.up` -> `select` -> `skipAtomsForSelection`) and then folds the DOM selection back
+onto the editor's own selection. Measured: every point inside the table maps to one of the widget's
+two boundary positions, so a dragged selection collapses to a caret every time.
+
+Three routes were tried against a real browser and measured:
+
+- `WidgetType.editable` plus `ignoreEvent`: necessary but **not sufficient**. With both set, the
+  drag produces a correct selection (editor state covering the table, DOM selection spanning it),
+  and `mouseup` then discards it. Note `editable` is not in the published `WidgetType` typings at
+  all; it is an internal field the editor happens to read.
+- `EditorView.atomicRanges`: does not help, by design. The published documentation states it does not
+  prevent programmatic selection updates from entering such regions, and `skipAtomicRanges` only
+  snaps a position strictly inside an atom, which the table's boundary positions never are.
+- Intercepting the `mouseup` recomputation: would mean binding us to internal behaviour that
+  upstream actively changes (see the `@codemirror/view` changelog on pointer selections and atomic
+  ranges).
+
+Routes not yet tried, which is why this stays open:
+
+- Making the table participate in the document instead of replacing it, so its text has real
+  positions. This is the direction that actually removes the cause, at the cost of the borders and
+  alignment the rendered table currently draws.
+- A dedicated "copy this table" affordance, which trades arbitrary cell selection for a whole-table
+  copy.
+
 
 ### Zoomable viewer for Mermaid diagrams (#129)
 
