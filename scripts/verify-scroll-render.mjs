@@ -21,6 +21,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stopVerifyApp, verifyWorkdir } from './verify-workdir.mjs'
+import { assertBuildFresh } from './build-freshness.mjs'
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..')
 // 每个脚本一个固定目录，开跑前擦干净，退出时再擦（见 verify-workdir.mjs）。
@@ -44,8 +45,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 
 async function main() {
-  if (!existsSync(BINARY)) {
-    console.error(`找不到应用：${BINARY}\n先构建：npm run build && npx tauri build --no-bundle`)
+  // 产物存在还不够，还要比源码新：改了渲染层却忘了重新构建，验的是旧产物，
+  // 红的是假的（见 build-freshness.mjs）。
+  try {
+    assertBuildFresh()
+  } catch (error) {
+    console.error(`✗ ${error.message}`)
     process.exitCode = 2
     return
   }
