@@ -1,10 +1,33 @@
 # 上游同步计划（2.7.2 → 2.7.6）
 
-- 状态：待批准
+- 状态：执行中（2026-10-09）
 - 执行分支：`main`（v2.8.0，Tauri 版）
 - 上游基线：`marswaveai/colamd`，分叉点 `5e0f3c3`（v2.7.2，也是本文的合并基点）
 - 目标上游：`upstream/main` `1e9b481`（v2.7.6），共 41 个提交
 - 相关文档：[editor-architecture.md](editor-architecture.md)、[tauri-migration-plan.md](tauri-migration-plan.md)
+
+## 0. 执行记录
+
+| 项 | 状态 | 提交 |
+| --- | --- | --- |
+| E1 深色主题选区、E2 主题选择器 | 已完成 | `4a57a40` |
+| E3 按标记回收进程、E4 外部链接走 opener | 已完成 | `2d168e6` |
+| E5 时间戳不再被当 emoji、E6 取消选中高亮 | 已完成 | `da7a67b` |
+| E7 有序列表重编号（含 `<ol start>`） | 已完成 | `ef78123` |
+| E9 属性区收起、点进块、面板列（六件事） | 已完成 | `408d86f` |
+| E10 渲染模式不露源码、字号、复制空行、字体拆类 | 已完成 | `fb08657` |
+| E8 本地链接跳转（渲染层 + Tauri 命令） | 已完成 | `9d3300e` |
+| E12 固定工作目录、E13 构建新鲜度、E14 模板 | 已完成 | `2d168e6`、`61c9df2` |
+| E15 约定与 changelog | 已完成 | `61c9df2` |
+| E11 `verify:themes` | 进行中 | — |
+| 三个 Electron 脚本迁移 | 未开始（见第 9 节） | — |
+
+### 执行中发现的偏差
+
+1. **E9 里 `ff93410` 删掉的「面板让位」是上游自己的错误**，不能照搬。它删掉三条让 `#editor` 避开面板的规则，理由是「面板是 shell 行里的兄弟、自己占位」，但面板一直是 `position: fixed`（不占布局）。上游 5 天后在 `2cf43b6`（#143）改回来了。本次采纳的是**修正后的形态**：一对 `--panel-inset-*` 变量同时喂给两种模式，让位用 padding 而不是 margin（滚动条因此停在面板边缘而不是藏在底下）。
+2. **E7 里 `<ol start>` 来自被推翻的 `7ad5639`**，不是 `0bafc7c`。那个提交含两件独立的事：屏幕重排（被推翻，不落）与导出保留起始号（被继承，要落）。本次只取后者。
+3. **E13 需要判两样产物**。上游只判 `dist/main/index.js`；这里渲染层由 vite 产出、应用由 cargo 产出，只判一样会让另一样悄悄过期。`assertBuildFresh()` 因此接受一个 `only` 参数，纯 Node 的验收（`verify:markdown`、`verify:links`）不要求先编二进制。
+4. **`verify:markdown`、`verify:links` 直接消费 TS 源码**（esbuild 现打包），不依赖任何构建产物，因此不加构建新鲜度门禁。
 
 ## 1. 为什么现在同步
 
@@ -135,3 +158,18 @@ E9 与 E10 有语义连锁：`ff93410` 靠 `isActiveRange` 实现「点进块」
 - 第 5 节验收全绿，含新脚本 `verify:links`、`verify:themes`
 - 第 2 节四条现存缺陷逐条复验消失
 - `AGENT.md` 补两处约定，`resources/demo/changelog.md` 追加 2.7.3～2.7.6
+
+## 9. 遗留：三个脚本仍指向已删除的 Electron
+
+`verify:features`（663 行，50 条断言）、`verify:export-pdf`（169 行）、`verify:image-export`（283 行）仍在 `spawn('npx', ['electron', ...])`，而全仓已无 Electron 依赖（不在 `package.json`、不在 `node_modules`）。**这三条命令当前必然失败。**
+
+它们不能照搬上游，也不能直接改成 `COLAMD_VERIFY`：
+
+| 依赖 | 现状 | Tauri 下的等价物 |
+| --- | --- | --- |
+| `Runtime.evaluate` 跑 DOM 探针 | 50 条断言全走这条路 | 检查项写进 `src/renderer/verify/checks.ts`，随包编译（CSP 禁止 eval） |
+| `Page.captureScreenshot` / `capturePage` | 图片与 PDF 导出验收 | 需要新的导出实现，见 [export-pdf-image-plan.md](export-pdf-image-plan.md) |
+| `Emulation.setDeviceMetricsOverride` | 把视口撑到一屏以上 | 让壳在 `COLAMD_VERIFY` 时把窗口开高（`verify:themes` 采用同一方案） |
+| Electron 的 `nativeImage` 读 PNG 尺寸 | `verify:image-export` | 纯 Node 的 PNG 头解析，或改用导出的产物尺寸断言 |
+
+评估：这三条与导出方案强相关（PDF 走 `WebviewWindow::print()`、图片要写三平台截图桥），**建议跟随导出功能一起迁移，而不是单独做**。在导出方案落地前，`AGENT.md` 里已把「跑不起来」记为已知缺口。
