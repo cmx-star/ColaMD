@@ -10,3 +10,6 @@ mobile/ios/ColaMDReader.xcodeproj/project.xcworkspace/
 mobile/ios/ColaMDReader.xcodeproj/xcuserdata/
 vscode-extension/*.vsix
 dist-web/
+dist-tauri/
+src-tauri/target/
+src-tauri/gen/schemas/

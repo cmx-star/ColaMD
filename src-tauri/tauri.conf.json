@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ColaMD",
+  "version": "2.7.2",
+  "identifier": "com.colamd.app",
+  "build": {
+    "frontendDist": "../dist-tauri/renderer",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev:tauri:renderer",
+    "beforeBuildCommand": "npm run build:tauri:renderer"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ColaMD",
+        "width": 960,
+        "height": 720,
+        "minWidth": 600,
+        "minHeight": 400,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 10 }
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis", "appimage", "deb"],
+    "icon": [
+      "../resources/icons/32x32.png",
+      "../resources/icons/128x128.png",
+      "../resources/icon.icns",
+      "../resources/icon.png"
+    ],
+    "category": "Productivity",
+    "shortDescription": "A free, elegant Markdown editor",
+    "longDescription": "A free, elegant Markdown editor. Simple by design, always in sync with the file on disk.",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

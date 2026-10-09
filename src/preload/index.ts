@@ -6,9 +6,12 @@ export interface SiblingFile {
   kind: 'file' | 'directory' | 'parent'
 }
 
-type FileOpenedData = { path: string | null; content: string; fileUrl: string | null }
-type ImageExportPreset = 'desktop' | 'mobile'
-type ImageExportSnapshot = { html: string; styles: string; bodyClass: string; background: string }
+// These three shape the payloads on the ElectronAPI surface, so they are part of
+// the contract every implementation has to satisfy (the Tauri adapter in
+// src/renderer/tauri-api.ts imports them for its signatures).
+export type FileOpenedData = { path: string | null; content: string; fileUrl: string | null }
+export type ImageExportPreset = 'desktop' | 'mobile'
+export type ImageExportSnapshot = { html: string; styles: string; bodyClass: string; background: string }
 export type FileManagerName = 'finder' | 'explorer' | 'file-manager'
 
 const pendingFileOpened: FileOpenedData[] = []

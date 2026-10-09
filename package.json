@@ -23,6 +23,9 @@
     "dist:linux": "electron-vite build && electron-builder --linux",
     "build:web": "vite build --config vite.web.config.ts",
     "preview:web": "vite preview --config vite.web.config.ts",
+    "build:tauri:renderer": "vite build --config vite.tauri.config.ts",
+    "dev:tauri:renderer": "vite --config vite.tauri.config.ts",
+    "tauri": "tauri",
     "check:theme-colors": "node scripts/check-theme-colors.mjs",
     "verify:markdown": "node scripts/verify-markdown.mjs",
     "verify:features": "node scripts/verify-features.mjs",
@@ -45,6 +48,7 @@
     "remark-breaks": "^4.0.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.9.4",
     "@types/katex": "^0.16.8",
     "electron": "^44.3.0",
     "electron-builder": "^26.16.1",

@@ -8,6 +8,7 @@ import { SearchPanel } from './editor/search-panel'
 import { applyTheme, loadSavedTheme } from './themes/theme-manager'
 import { setUiLanguage, isChinese, type UiLanguage } from './ui-language'
 import { applyEditorFont, loadSavedEditorFont, showFontSettingsModal } from './editor/font-settings'
+import { createTauriApi } from './tauri-api'
 import './themes/base.css'
 import './themes/premium.css'
 import './themes/editor-preview.css'
@@ -2026,6 +2027,11 @@ async function init(): Promise<void> {
     void result
   })
 }
+
+// The preload bridge hands the renderer `window.electronAPI`; under Tauri there is
+// no preload, so the same shape is built here before anything reads it. Both shells
+// therefore run this file unchanged (docs/tauri-migration-plan.md, decision D1).
+if (!window.electronAPI) window.electronAPI = createTauriApi()
 
 // A packaged app has no console: without the IPC copy of this, a renderer that
 // dies during init leaves nothing behind but a white window (#126).

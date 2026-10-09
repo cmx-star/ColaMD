@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "P1: the shell needs the core defaults only. File IO, dialogs and the updater get their own entries as they land (P2, P4 in docs/tauri-migration-plan.md).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
