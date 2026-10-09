@@ -280,17 +280,19 @@ export class SearchPanel {
     view.dispatch({ effects: setSearchHighlight.of(Decoration.none) })
   }
 
+  // Let CodeMirror do the scrolling.
+  //
+  // This used to read `coordsAtPos` and scroll `#editor` by hand, which was written
+  // for the Milkdown era: CodeMirror's scroller is `.cm-scroller`, and `coordsAtPos`
+  // answers null for a position outside the rendered viewport, so the function gave
+  // up silently and the counter advanced while the view never moved (2026-10-09).
+  // `scrollIntoView` scrolls the right element and copes with a position that is not
+  // drawn yet. The selection is deliberately left alone: find highlights, it does not
+  // move the caret, which also keeps the "only the caret's line shows source" rule.
   private scrollToCurrent(view: NonNullable<ReturnType<typeof getEditorView>>): void {
     if (this.currentIndex < 0 || this.currentIndex >= this.matches.length) return
     const match = this.matches[this.currentIndex]
-    const coords = view.coordsAtPos(match.from)
-    if (!coords) return
-    const editorEl = document.getElementById('editor')
-    if (!editorEl) return
-
-    const rect = editorEl.getBoundingClientRect()
-    const targetTop = editorEl.scrollTop + coords.top - rect.top - rect.height / 3
-    editorEl.scrollTo({ top: targetTop, behavior: 'smooth' })
+    view.dispatch({ effects: EditorView.scrollIntoView(match.from, { y: 'center' }) })
   }
 
   private next(): void {

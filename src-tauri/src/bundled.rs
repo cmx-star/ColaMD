@@ -1,6 +1,8 @@
-// The documents that ship with the app: the changelog behind "What's New" and the
-// Markdown cheatsheet. They open in their own window with no file behind them, which
-// is what the Electron build did (createWindow with in-memory content).
+// The document that ships with the app: the Markdown cheatsheet, opened with no file
+// behind it, the way the Electron build opened bundled content.
+//
+// It used to cover the changelog too ("What's New"); that menu entry was removed on
+// 2026-10-09, so only the cheatsheet is left.
 
 use std::path::PathBuf;
 
@@ -23,16 +25,6 @@ fn resource_root(app: &AppHandle) -> Option<PathBuf> {
         .filter(|dir| dir.is_dir())
 }
 
-fn demo_dir(app: &AppHandle) -> Option<PathBuf> {
-    let root = resource_root(app)?;
-    let packaged = root.join("demo");
-    if packaged.is_dir() {
-        Some(packaged)
-    } else {
-        Some(root.clone())
-    }
-}
-
 fn templates_dir(app: &AppHandle) -> Option<PathBuf> {
     let root = resource_root(app)?;
     let packaged = root.join("templates");
@@ -40,19 +32,6 @@ fn templates_dir(app: &AppHandle) -> Option<PathBuf> {
         Some(packaged)
     } else {
         Some(root)
-    }
-}
-
-/// Open `demo/<file>`, or an empty window browsing that folder when it is missing.
-pub fn open(app: &AppHandle, file: &str) {
-    let dir = demo_dir(app);
-    let path = dir.as_ref().map(|dir| dir.join(file));
-    match path.and_then(|path| std::fs::read_to_string(path).ok()) {
-        Some(content) => crate::windows::open_memory_window(app, content, dir),
-        None => {
-            crate::trace::trace(|| format!("bundled document {file} not found"));
-            crate::windows::open_untitled_window(app);
-        }
     }
 }
 

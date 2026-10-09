@@ -1733,6 +1733,24 @@ async function init(): Promise<void> {
     event.preventDefault()
     searchPanel.show()
   })
+  // ⌘I（斜体）与 ⌘/（切换源码模式）由这一层负责，不走菜单快捷键。
+  // 这两个键在菜单里注册了却收不到（另两个键 ⌘B、⌘E 能收到，原因未查明），而编辑器
+  // 的默认按键映射会先把它们吃掉：⌘I 会「选中父级语法节点」、⌘/ 会插入 HTML 注释。
+  // 编辑器那两条绑已摘掉（editor/state.ts），菜单也不再注册这两个加速键，所以这里
+  // 是唯一的主人，不存在重复触发。捕获阶段先于编辑器处理。
+  document.addEventListener('keydown', (event) => {
+    if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return
+    const key = event.key.toLowerCase()
+    if (key === 'i') {
+      event.preventDefault()
+      runFormatCommand('italic')
+      return
+    }
+    if (event.key === '/') {
+      event.preventDefault()
+      toggleSourceMode()
+    }
+  }, true)
   api.onFormatCommand((id) => runFormatCommand(id as FormatCommandId))
   updateUiLanguage()
 

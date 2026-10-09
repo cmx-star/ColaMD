@@ -39,6 +39,8 @@ pub struct MenuState {
     theme: Mutex<String>,
     panel_side: Mutex<String>,
     page_width: Mutex<String>,
+    /// View zoom per window label, so the menu can step from the current factor.
+    zoom: Mutex<std::collections::HashMap<String, f64>>,
     /// The window the user was last working in. A menu accelerator fires without
     /// naming a window, and at that instant none of them may report focus, so the
     /// last known one is what the event belongs to (the Electron build kept the
@@ -72,6 +74,24 @@ impl MenuState {
         }
         *current = side.to_string();
         true
+    }
+
+    /// Step the zoom for a window. `chromium_steps` are the levels a browser uses;
+    /// stepping by a fixed amount instead would drift away from them.
+    pub fn step_zoom(&self, label: &str, direction: i32) -> f64 {
+        const LEVELS: [f64; 13] = [0.5, 0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+        let mut zoom = self.zoom.lock().expect("zoom");
+        let current = *zoom.get(label).unwrap_or(&1.0);
+        let index = LEVELS.iter().position(|level| (*level - current).abs() < 0.001).unwrap_or(5) as i32;
+        let next = (index + direction).clamp(0, LEVELS.len() as i32 - 1) as usize;
+        let value = LEVELS[next];
+        zoom.insert(label.to_string(), value);
+        value
+    }
+
+    pub fn reset_zoom(&self, label: &str) -> f64 {
+        self.zoom.lock().expect("zoom").insert(label.to_string(), 1.0);
+        1.0
     }
 
     pub fn remember_focus(&self, label: &str) {

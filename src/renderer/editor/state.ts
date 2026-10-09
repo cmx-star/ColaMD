@@ -39,8 +39,13 @@ export function stateExtensions(): Extension {
     // 那块面板只有英文、也不跟主题走，和我们自己的检索面板（有中英文、按主题上色）撞在
     // 一起。查找是应用级功能，入口在菜单的「查找」上（Cmd+F 由菜单的快捷键发
     // `editor:search`），面板在 editor/search-panel.ts。
+    // `defaultKeymap` 里有两条和本应用的快捷键冲突，先摘掉：
+    //   Mod-i → selectParentSyntax（选中父级语法节点），吞掉「斜体」
+    //   Mod-/ → toggleComment（插入 HTML 注释），吞掉「切换 Markdown 源码」
+    // 两个键的应用级入口都在菜单里，菜单没接住时由渲染层兜底（main.ts 里的
+    // appShortcutFallback）。同一个键不能有两个主人，否则「切两次等于没切」。
     keymap.of([
-      ...defaultKeymap,
+      ...defaultKeymap.filter((binding) => binding.key !== 'Mod-i' && binding.key !== 'Mod-/'),
       ...historyKeymap,
       indentWithTab,
     ]),

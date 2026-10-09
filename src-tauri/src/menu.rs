@@ -69,30 +69,41 @@ fn send_to_focused(app: &AppHandle, event: &str, payload: Option<&str>) {
     }
 }
 
+/// The Format submenu.
+///
+/// The id suffix is exactly the id the renderer's `runFormatCommand` expects
+/// (`inlineCode`, `bulletList`, `orderedList`): the menu handler strips the `format-`
+/// prefix and forwards what is left, so a kebab-case spelling here produced a command
+/// name the renderer did not know and the item silently did nothing (2026-10-09).
+///
+/// (id suffix, label in Chinese, label in English, accelerator)
+/// Inline formatting only. The two list commands are gone (2026-10-09): typing `- `
+/// or `1. ` is what a Markdown writer does anyway, and a menu entry for it was one
+/// more thing to keep in step.
+const FORMAT_ITEMS: [(&str, &str, &str, &str); 5] = [
+    ("bold", "加粗", "Bold", "CmdOrCtrl+B"),
+    // No accelerator: the renderer owns ⌘I (see main.ts). A menu accelerator here did
+    // not reach the shell and the editor's own keymap swallowed the key instead.
+    ("italic", "斜体", "Italic", ""),
+    ("inlineCode", "行内代码", "Inline Code", "CmdOrCtrl+E"),
+    ("strikethrough", "删除线", "Strikethrough", "CmdOrCtrl+Shift+X"),
+    ("link", "链接（网址取自剪贴板）", "Link (URL from clipboard)", "CmdOrCtrl+K"),
+];
+
 fn format_submenu(app: &AppHandle) -> tauri::Result<tauri::menu::Submenu<tauri::Wry>> {
-    let zh = crate::i18n::code() == "zh";
-    let label = |zh_text: &'static str, en_text: &'static str| t(zh_text, en_text).to_string();
-    let item = |id: &'static str, zh_text: &'static str, en_text: &'static str, accel: &'static str, command: &'static str| {
-        MenuItemBuilder::with_id(id, label(zh_text, en_text))
-            .accelerator(accel)
-            .build(app)
-            .map(|item| (item, command))
-    };
-    let _ = zh;
-
-    let entries = [
-        item("format-bold", "加粗", "Bold", "CmdOrCtrl+B", "bold")?,
-        item("format-italic", "斜体", "Italic", "CmdOrCtrl+I", "italic")?,
-        item("format-inline-code", "行内代码", "Inline Code", "CmdOrCtrl+E", "inlineCode")?,
-        item("format-strikethrough", "删除线", "Strikethrough", "CmdOrCtrl+Shift+X", "strikethrough")?,
-        item("format-link", "链接（网址取自剪贴板）", "Link (URL from clipboard)", "CmdOrCtrl+K", "link")?,
-        item("format-bullet", "无序列表", "Bullet List", "CmdOrCtrl+Shift+8", "bulletList")?,
-        item("format-ordered", "有序列表", "Ordered List", "CmdOrCtrl+Shift+7", "orderedList")?,
-    ];
-
-    let mut builder = SubmenuBuilder::new(app, label("格式", "Format"));
-    for (menu_item, _) in &entries {
-        builder = builder.item(menu_item);
+    let mut builder = SubmenuBuilder::new(app, t("格式", "Format"));
+    for (command, zh, en, accelerator) in FORMAT_ITEMS {
+        let item_builder = MenuItemBuilder::with_id(format!("format-{command}"), t(zh, en));
+        let item_builder = if accelerator.is_empty() {
+            item_builder
+        } else {
+            item_builder.accelerator(accelerator)
+        };
+        let item = item_builder.build(app)?;
+        // A shortcut nobody can press and a shortcut that was never registered look the
+        // same from the outside; this is what the shell was asked to register.
+        crate::trace::trace(|| format!("format item {command} asks for {accelerator}"));
+        builder = builder.item(&item);
     }
     builder.build()
 }
@@ -231,9 +242,9 @@ fn build_inner(
         .checked(recent::restore_on_launch())
         .build(app)?;
     let clear_recent = MenuItemBuilder::with_id("file-clear-recent", t("清除最近记录", "Clear Recent")).build(app)?;
-    let new_tab = MenuItemBuilder::with_id("file-new-tab", t("新建标签页", "New Tab"))
-        .accelerator("CmdOrCtrl+T")
-        .build(app)?;
+    // No accelerator: ⌘N already creates a tab, and ⌘T now belongs to the file panel
+    // (the reporter's ⌘\ never reached the app, so the panel had no working key).
+    let new_tab = MenuItemBuilder::with_id("file-new-tab", t("新建标签页", "New Tab")).build(app)?;
     let close_tab = MenuItemBuilder::with_id("file-close-tab", t("关闭标签页", "Close Tab"))
         .accelerator("CmdOrCtrl+W")
         .build(app)?;
@@ -243,15 +254,42 @@ fn build_inner(
     let save_as = MenuItemBuilder::with_id("file-save-as", t("另存为...", "Save As..."))
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
-    let export_pdf = MenuItemBuilder::with_id("file-export-pdf", t("导出 PDF...", "Export PDF...")).build(app)?;
-    let export_slides_pdf =
-        MenuItemBuilder::with_id("file-export-slides-pdf", t("导出幻灯片 PDF...", "Export Slides PDF...")).build(app)?;
+    // The export paths that are not ported yet stay disabled rather than doing
+    // nothing when clicked: an item that silently does nothing is indistinguishable
+    // from a broken one. HTML works, so it stays live (docs/tauri-migration-plan.md,
+    // P5, and src-tauri/src/export.rs for why each of the others differs).
+    let not_ported = t("（此版本尚未提供）", "(not in this build)");
+    let export_pdf = MenuItemBuilder::with_id(
+        "file-export-pdf",
+        format!("{} {not_ported}", t("导出 PDF...", "Export PDF...")),
+    )
+    .enabled(false)
+    .build(app)?;
+    let export_slides_pdf = MenuItemBuilder::with_id(
+        "file-export-slides-pdf",
+        format!("{} {not_ported}", t("导出幻灯片 PDF...", "Export Slides PDF...")),
+    )
+    .enabled(false)
+    .build(app)?;
     let export_html = MenuItemBuilder::with_id("file-export-html", t("导出 HTML...", "Export HTML...")).build(app)?;
-    let export_word = MenuItemBuilder::with_id("file-export-word", t("导出 Word...", "Export Word...")).build(app)?;
-    let export_image_desktop =
-        MenuItemBuilder::with_id("file-export-image-desktop", t("导出图片（电脑阅读）...", "Export Image (Desktop)...")).build(app)?;
-    let export_image_mobile =
-        MenuItemBuilder::with_id("file-export-image-mobile", t("导出图片（手机阅读）...", "Export Image (Mobile)...")).build(app)?;
+    let export_word = MenuItemBuilder::with_id(
+        "file-export-word",
+        format!("{} {not_ported}", t("导出 Word...", "Export Word...")),
+    )
+    .enabled(false)
+    .build(app)?;
+    let export_image_desktop = MenuItemBuilder::with_id(
+        "file-export-image-desktop",
+        format!("{} {not_ported}", t("导出图片（电脑阅读）...", "Export Image (Desktop)...")),
+    )
+    .enabled(false)
+    .build(app)?;
+    let export_image_mobile = MenuItemBuilder::with_id(
+        "file-export-image-mobile",
+        format!("{} {not_ported}", t("导出图片（手机阅读）...", "Export Image (Mobile)...")),
+    )
+    .enabled(false)
+    .build(app)?;
 
     let mut file_builder = SubmenuBuilder::new(app, t("文件", "File"))
         .item(&new_tab_from_new)
@@ -275,8 +313,13 @@ fn build_inner(
         .item(&export_image_mobile)
         .separator();
     file_builder = if is_mac {
-        file_builder
-            .item(&PredefinedMenuItem::close_window(app, Some(t("关闭窗口", "Close Window")))?)
+        // ⌘⇧W, not the predefined close_window: that one carries ⌘W, which is already
+        // Close Tab, and macOS would then show the same shortcut twice with the
+        // winner decided by menu order. Electron spelled it ⌘⇧W too (2026-10-09).
+        let close_window = MenuItemBuilder::with_id("file-close-window", t("关闭窗口", "Close Window"))
+            .accelerator("CmdOrCtrl+Shift+W")
+            .build(app)?;
+        file_builder.item(&close_window)
     } else {
         file_builder.item(&PredefinedMenuItem::quit(app, Some(t("退出 ColaMD", "Quit ColaMD")))?)
     };
@@ -310,8 +353,10 @@ fn build_inner(
     let zoom_reset = MenuItemBuilder::with_id("view-zoom-reset", t("实际大小", "Actual Size"))
         .accelerator("CmdOrCtrl+0")
         .build(app)?;
+    // ⌘T, not ⌘\: that key was taken by another app on the machine this was tested
+    // on, so the panel was unreachable from the keyboard (2026-10-09).
     let file_panel = MenuItemBuilder::with_id("view-file-panel", t("显示 / 隐藏文件列表", "Show / Hide File List"))
-        .accelerator("CmdOrCtrl+\\")
+        .accelerator("CmdOrCtrl+T")
         .build(app)?;
     let panel_right = CheckMenuItemBuilder::with_id("view-panel-right", t("在右侧", "On the Right"))
         .checked(current_panel_side == "right")
@@ -323,8 +368,9 @@ fn build_inner(
         .item(&panel_right)
         .item(&panel_left)
         .build()?;
+    // ⌘/ is the renderer's (main.ts): the accelerator here never arrived, and the
+    // editor's keymap turned it into an HTML comment instead.
     let source_mode = MenuItemBuilder::with_id("view-source-mode", t("切换 Markdown 源码", "Toggle Markdown Source"))
-        .accelerator("CmdOrCtrl+/")
         .build(app)?;
     let font_settings = MenuItemBuilder::with_id("view-font-settings", t("编辑器字体…", "Editor Font…")).build(app)?;
     let width_narrow = CheckMenuItemBuilder::with_id("view-width-narrow", t("窄", "Narrow"))
@@ -351,9 +397,6 @@ fn build_inner(
         .item(&language_zh)
         .item(&language_en)
         .build()?;
-    let slideshow = MenuItemBuilder::with_id("view-slideshow", t("放映幻灯片", "Play Slideshow"))
-        .accelerator("CmdOrCtrl+Shift+P")
-        .build(app)?;
     let fullscreen = PredefinedMenuItem::fullscreen(app, Some(t("切换全屏", "Toggle Full Screen")))?;
     let view = SubmenuBuilder::new(app, t("视图", "View"))
         .item(&zoom_reset)
@@ -368,16 +411,12 @@ fn build_inner(
         .item(&page_width)
         .item(&language_menu)
         .separator()
-        .item(&slideshow)
         .item(&fullscreen)
         .build()?;
 
     let theme = theme_submenu(app, current_theme)?;
 
     // --- Help ---------------------------------------------------------------
-    let whats_new = MenuItemBuilder::with_id("help-whats-new", t("新功能演示", "What's New"))
-        .accelerator("CmdOrCtrl+Shift+D")
-        .build(app)?;
     let cheatsheet = MenuItemBuilder::with_id("help-cheatsheet", t("Markdown 语法", "Markdown Syntax"))
         .accelerator("CmdOrCtrl+Shift+/")
         .build(app)?;
@@ -390,7 +429,6 @@ fn build_inner(
         Some(AboutMetadataBuilder::new().name(Some("ColaMD")).version(Some(env!("CARGO_PKG_VERSION"))).build()),
     )?;
     let help = SubmenuBuilder::new(app, t("帮助", "Help"))
-        .item(&whats_new)
         .item(&cheatsheet)
         .item(&check_updates)
         .separator()
@@ -399,11 +437,13 @@ fn build_inner(
 
     let mut builder = MenuBuilder::new(app).item(&menu).item(&file).item(&edit).item(&view).item(&theme);
     if is_mac {
+        // No Close item here: the predefined one carries ⌘W, which is Close Tab, and
+        // the menu would then show the same shortcut twice (File → Close Window has
+        // ⌘⇧W and covers it). macOS still injects the system window-tiling commands
+        // into whichever menu is registered as the Window menu.
         let window_menu = SubmenuBuilder::new(app, t("窗口", "Window"))
             .item(&PredefinedMenuItem::minimize(app, Some(t("最小化", "Minimize")))?)
             .item(&PredefinedMenuItem::maximize(app, Some(t("缩放", "Zoom")))?)
-            .separator()
-            .item(&PredefinedMenuItem::close_window(app, Some(t("关闭窗口", "Close Window")))?)
             .build()?;
         builder = builder.item(&window_menu);
     }
@@ -432,6 +472,11 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         "file-open" => emit("menu-open", None),
         "file-new-tab" => emit("menu-new-tab", None),
         "file-close-tab" => emit("menu-close-tab", None),
+        "file-close-window" => {
+            if let Some(window) = window {
+                let _ = window.close();
+            }
+        }
         "file-save" => emit("menu-save", None),
         "file-save-as" => emit("menu-save-as", None),
         "file-export-pdf" => emit("menu-export-pdf", None),
@@ -449,11 +494,23 @@ pub fn handle_event(app: &AppHandle, id: &str) {
             build(app);
         }
         "edit-find" => emit("editor:search", None),
+        "view-zoom-in" | "view-zoom-out" | "view-zoom-reset" => {
+            let Some(window) = window else { return };
+            let state = app.state::<crate::MenuState>();
+            let label = window.label();
+            let factor = match id {
+                "view-zoom-reset" => state.reset_zoom(label),
+                "view-zoom-in" => state.step_zoom(label, 1),
+                _ => state.step_zoom(label, -1),
+            };
+            match window.set_zoom(factor) {
+                Ok(()) => crate::trace::trace(|| format!("zoom {label} -> {factor}")),
+                Err(error) => crate::trace::trace(|| format!("zoom failed: {error}")),
+            }
+        }
         "view-file-panel" => emit("toggle-file-panel", None),
         "view-source-mode" => emit("toggle-source-mode", None),
         "view-font-settings" => emit("open-font-settings", None),
-        "view-slideshow" => emit("menu-play-slideshow", None),
-        "help-whats-new" => crate::bundled::open(app, "changelog.md"),
         "help-cheatsheet" => crate::bundled::open_cheatsheet(app),
         other => {
             if let Some(theme) = other.strip_prefix("theme-custom:") {
