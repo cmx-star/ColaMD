@@ -7,13 +7,17 @@
 // `window.electronAPI` is absent, which is exactly the case under Tauri: the
 // Electron build keeps working through the preload bridge, unchanged.
 //
-// P1 scope: the shell boots and paints. Language, the file manager's name, the
-// clipboard and external links are real; everything that touches a document is a
-// logged stub, and P2 replaces them with Rust commands (file IO, the watcher,
-// atomic saves) and P3 finishes the window, tab and theme surface. The stubs
-// return the same shapes the renderer already handles for "nothing happened", so
-// the UI can be compared against the Electron build without pretending an edit
-// would be saved.
+// Event names are the channel names the preload used ('file-changed',
+// 'siblings-changed', …) so the mapping from one shell to the other stays 1:1.
+//
+// Stages, per docs/tauri-migration-plan.md: document IO, the watcher, the close
+// guard and the conflict flow are live (P2). Theme loading, system fonts, exports
+// and the menu surface are still logged stubs and arrive in P3 to P5; each one says
+// so once in the console rather than pretending to work.
+
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 import type {
   ElectronAPI,
@@ -30,12 +34,17 @@ const reported = new Set<string>()
 function notYet(name: string): void {
   if (reported.has(name)) return
   reported.add(name)
-  console.info(`[tauri-api] not implemented yet (P2/P3/P4): ${name}`)
+  console.info(`[tauri-api] not implemented yet (P3/P4/P5): ${name}`)
 }
 
-/** An event subscription that has no sender yet. */
-function unwiredEvent(name: string): void {
-  notYet(name)
+/** Subscribe to a shell event. The renderer's API is synchronous, so the promise is
+ *  settled in the background and a failure is reported once. */
+function on<T>(event: string, callback: (payload: T) => void): void {
+  void listen<T>(event, (message) => callback(message.payload)).catch(() => {
+    if (reported.has(event)) return
+    reported.add(event)
+    console.info(`[tauri-api] could not subscribe to ${event}`)
+  })
 }
 
 function isMac(): boolean {
@@ -55,69 +64,52 @@ function detectFileManager(): FileManagerName {
   return isWindows() ? 'explorer' : 'file-manager'
 }
 
+/** Local files reach the webview through Tauri's asset protocol, which is what
+ *  `file://` did in the Electron build (relative images in a document). */
+function documentUrl(path: string | null): string | null {
+  return path ? convertFileSrc(path) : null
+}
+
 export function createTauriApi(): ElectronAPI {
   const api: ElectronAPI = {
-    // --- Opening and reading documents (P2) -------------------------------
+    // --- Opening and reading documents ------------------------------------
     openFile: async () => {
-      notYet('openFile')
-      return null
+      const opened = await invoke<{ path: string | null; content: string } | null>('open_file')
+      return opened?.path ? { path: opened.path, content: opened.content } : null
     },
-    openFilePath: async () => {
-      notYet('openFilePath')
-      return null
+    openFilePath: async (path: string) => {
+      const opened = await invoke<{ path: string | null; content: string } | null>('open_file_path', { filePath: path })
+      return opened?.path ? { path: opened.path, content: opened.content } : null
     },
-    openSibling: async () => {
-      notYet('openSibling')
-      return false
+    openSibling: async (path: string) => invoke<boolean>('open_sibling', { filePath: path }),
+    activateFile: async (path: string | null) => {
+      const active = await invoke<{ content: string; mtime: number } | null>('activate_file', { filePath: path })
+      if (!active) return null
+      return { content: active.content, fileUrl: documentUrl(path) ?? '', mtime: active.mtime }
     },
-    activateFile: async () => {
-      notYet('activateFile')
-      return null
-    },
-    listSiblings: async () => {
-      notYet('listSiblings')
-      return null
-    },
-    listDirectory: async () => {
-      notYet('listDirectory')
-      return null
-    },
-    fileUrl: async () => {
-      notYet('fileUrl')
-      return null
-    },
-    setTabFiles: () => {
-      notYet('setTabFiles')
+    listSiblings: async () => invoke<SiblingFile[] | null>('list_siblings'),
+    listDirectory: async (path: string) => invoke<SiblingFile[] | null>('list_directory', { dirPath: path }),
+    fileUrl: async (path: string) => documentUrl(path),
+    setTabFiles: (paths: string[]) => {
+      void invoke('set_tab_files', { paths }).catch(() => undefined)
     },
 
-    // --- Writing documents (P2) ------------------------------------------
-    saveFile: async () => {
-      notYet('saveFile')
-      return null
-    },
-    saveFileAs: async () => {
-      notYet('saveFileAs')
-      return null
-    },
-    reportDirty: () => {
-      notYet('reportDirty')
+    // --- Writing documents ------------------------------------------------
+    saveFile: async (content: string, expectedPath?: string, rebuildMenu?: boolean, autosave?: boolean) =>
+      invoke<string | null>('save_file', { content, expectedPath, rebuildMenu, autosave }),
+    saveFileAs: async (content: string, expectedPath?: string) =>
+      invoke<string | null>('save_file_as', { content, expectedPath }),
+    reportDirty: (isDirty: boolean) => {
+      void invoke('report_dirty', { isDirty }).catch(() => undefined)
     },
     reportExternalConflict: async (content: string) => {
-      void content
-      notYet('reportExternalConflict')
+      await invoke('report_external_conflict', { localContent: content })
     },
 
-    // --- Shell chrome and system integration (P3/P4) ----------------------
+    // --- Shell chrome and system integration ------------------------------
     getFileManagerName: async () => detectFileManager(),
-    revealFile: async () => {
-      notYet('revealFile')
-      return false
-    },
-    revealPath: async (target: string) => {
-      void target
-      notYet('revealPath')
-      return false
-    },
+    revealFile: async () => invoke<boolean>('reveal_file'),
+    revealPath: async (target: string) => invoke<boolean>('reveal_path', { target }),
     showEntryContextMenu: async () => {
       notYet('showEntryContextMenu')
     },
@@ -125,26 +117,24 @@ export function createTauriApi(): ElectronAPI {
       notYet('showTabContextMenu')
     },
     popupAppMenu: async () => {
-      notYet('popupAppMenu')
+      await invoke('popup_app_menu')
     },
     closeWindow: async () => {
-      notYet('closeWindow')
+      await invoke('request_close_window')
     },
-    setSlideshowFullscreen: async () => {
-      notYet('setSlideshowFullscreen')
-      return false
-    },
-    reportTitlebarColors: async () => {
-      notYet('reportTitlebarColors')
+    setSlideshowFullscreen: async (on: boolean) => invoke<boolean>('set_slideshow_fullscreen', { on }),
+    reportTitlebarColors: async (colors: { background: string; symbol: string }) => {
+      await invoke('report_titlebar_colors', { colors })
     },
     reportRendererReady: () => {
-      notYet('reportRendererReady')
+      void invoke('renderer_ready').catch(() => undefined)
     },
     logRendererError: async (message: string) => {
-      console.error(`[renderer] ${message}`)
+      await invoke('log_renderer_error', { message }).catch(() => undefined)
     },
     getPathForFile: () => {
-      notYet('getPathForFile')
+      // The webview has no path for a File object; dropped files arrive through the
+      // drag-drop event wired at the bottom of this file instead.
       return ''
     },
     openExternal: (url: string) => {
@@ -158,37 +148,26 @@ export function createTauriApi(): ElectronAPI {
       }
     },
 
-    // --- Language and theme (P3 for custom themes) ------------------------
+    // --- Language and theme -------------------------------------------------
     getLanguage: async () => detectLanguage(),
-    loadCustomTheme: async () => {
-      notYet('loadCustomTheme')
-      return null
+    loadCustomTheme: async () =>
+      invoke<{ name: string; css: string } | null>('load_custom_theme'),
+    loadThemeCSS: async (fileName: string) => invoke<string | null>('load_theme_css', { fileName }),
+    reportTheme: async (theme: string) => {
+      await invoke('report_theme', { theme })
     },
-    loadThemeCSS: async () => {
-      notYet('loadThemeCSS')
-      return null
+    setEditorFont: async (prefs: { family: string; size: number }) => {
+      await invoke('set_editor_font', { prefs })
     },
-    reportTheme: async () => {
-      notYet('reportTheme')
-    },
-    setEditorFont: async () => {
-      notYet('setEditorFont')
-    },
-    listSystemFonts: async () => {
-      notYet('listSystemFonts')
-      return []
-    },
+    listSystemFonts: async () => invoke<string[]>('list_system_fonts'),
 
-    // --- Export (P5) ------------------------------------------------------
+    // --- Export ------------------------------------------------------------
     exportPDF: async () => {
       notYet('exportPDF')
       return false
     },
-    exportHTML: async (snapshot: { content: string; document: string; html: string; styles: string; bodyClass: string }) => {
-      void snapshot
-      notYet('exportHTML')
-      return false
-    },
+    exportHTML: async (snapshot: { content: string; document: string; html: string; styles: string; bodyClass: string }) =>
+      invoke<boolean>('export_html', { snapshot }),
     exportDOCX: async (payload: { content: string; images: Record<string, string> }) => {
       void payload
       notYet('exportDOCX')
@@ -201,7 +180,7 @@ export function createTauriApi(): ElectronAPI {
       return false
     },
 
-    // --- Update flow (P4) -------------------------------------------------
+    // --- Update flow --------------------------------------------------------
     downloadUpdate: async () => {
       notYet('downloadUpdate')
     },
@@ -209,62 +188,72 @@ export function createTauriApi(): ElectronAPI {
       notYet('installUpdate')
     },
 
-    // --- Save/close handshake with the shell (P2) -------------------------
-    respondDocumentState: (requestId: string) => {
-      void requestId
-      notYet('respondDocumentState')
+    // --- Save/close handshake ----------------------------------------------
+    respondDocumentState: (requestId: string, snapshot: { dirty: boolean; content: string; tabs?: { path: string | null; content: string }[] }) => {
+      void invoke('document_state_response', { requestId, snapshot }).catch(() => undefined)
     },
 
-    // --- Events from the shell and the menu (P2 through P4) ---------------
-    onTabMenuAction: () => unwiredEvent('onTabMenuAction'),
-    onFocusFile: () => unwiredEvent('onFocusFile'),
-    onOpenInNewTab: () => unwiredEvent('onOpenInNewTab'),
-    onFileChanged: () => unwiredEvent('onFileChanged'),
-    onNewFile: () => unwiredEvent('onNewFile'),
+    // --- Events from the shell ---------------------------------------------
     onFileOpened: (callback: (data: FileOpenedData) => void) => {
-      void callback
-      unwiredEvent('onFileOpened')
+      on<{ path: string | null; content: string }>('file-opened', (payload) => {
+        callback({ path: payload.path, content: payload.content, fileUrl: documentUrl(payload.path) })
+      })
     },
-    onSiblingsChanged: (callback: (files: SiblingFile[]) => void) => {
-      void callback
-      unwiredEvent('onSiblingsChanged')
+    onFileChanged: (callback: (content: string) => void) => on<string>('file-changed', callback),
+    onSiblingsChanged: (callback: (files: SiblingFile[]) => void) => on<SiblingFile[]>('siblings-changed', callback),
+    onOpenInNewTab: (callback: (path: string) => void) => on<string>('open-in-new-tab', callback),
+    onFocusFile: (callback: (path: string) => void) => on<string>('focus-file', callback),
+    onExternalConflictResult: (callback) => on('external-conflict-result', callback),
+    onRequestDocumentState: (callback: (requestId: string) => void) => on<string>('request-document-state', callback),
+    onFullscreenChange: (callback: (isFullscreen: boolean) => void) => on<boolean>('fullscreen-changed', callback),
+
+    // --- Menu, theme and view events ---------------------------------------
+    onTabMenuAction: (callback) => on('tab-menu-action', callback),
+    onNewFile: (callback) => on<void>('new-file', () => callback()),
+    onLanguageChanged: (callback) => on<'zh' | 'en'>('language-changed', callback),
+    onMenuOpen: (callback) => on<void>('menu-open', () => callback()),
+    onMenuSave: (callback) => on<void>('menu-save', () => callback()),
+    onMenuSaveAs: (callback) => on<void>('menu-save-as', () => callback()),
+    onMenuNewTab: (callback) => on<void>('menu-new-tab', () => callback()),
+    onMenuCloseTab: (callback) => on<void>('menu-close-tab', () => callback()),
+    onMenuExportPDF: (callback) => on<void>('menu-export-pdf', () => callback()),
+    onMenuExportHTML: (callback) => on<void>('menu-export-html', () => callback()),
+    onMenuExportDOCX: (callback) => on<void>('menu-export-docx', () => callback()),
+    onMenuExportImage: (callback) => on<ImageExportPreset>('menu-export-image', callback),
+    onMenuPlaySlideshow: (callback) => on<void>('menu-play-slideshow', () => callback()),
+    onMenuImportTheme: (callback) => on<void>('menu-import-theme', () => callback()),
+    onUpdateAvailable: () => notYet('onUpdateAvailable'),
+    onUpdateDownloaded: () => notYet('onUpdateDownloaded'),
+    onUpdateProgress: () => notYet('onUpdateProgress'),
+    onUpdateError: () => notYet('onUpdateError'),
+    onSetTheme: (callback) => on<string>('set-theme', callback),
+    onSetCustomCSS: (callback) => on<string>('set-custom-css', callback),
+    onSetPanelSide: (callback) => on<string>('set-panel-side', callback),
+    reportPanelSide: async (side: string) => {
+      await invoke('report_panel_side', { side })
     },
-    onLanguageChanged: () => unwiredEvent('onLanguageChanged'),
-    onFullscreenChange: () => unwiredEvent('onFullscreenChange'),
-    onExternalConflictResult: () => unwiredEvent('onExternalConflictResult'),
-    onUpdateAvailable: () => unwiredEvent('onUpdateAvailable'),
-    onUpdateDownloaded: () => unwiredEvent('onUpdateDownloaded'),
-    onUpdateProgress: () => unwiredEvent('onUpdateProgress'),
-    onUpdateError: () => unwiredEvent('onUpdateError'),
-    onRequestDocumentState: () => unwiredEvent('onRequestDocumentState'),
-    onMenuOpen: () => unwiredEvent('onMenuOpen'),
-    onMenuSave: () => unwiredEvent('onMenuSave'),
-    onMenuSaveAs: () => unwiredEvent('onMenuSaveAs'),
-    onMenuNewTab: () => unwiredEvent('onMenuNewTab'),
-    onMenuCloseTab: () => unwiredEvent('onMenuCloseTab'),
-    onMenuExportPDF: () => unwiredEvent('onMenuExportPDF'),
-    onMenuExportHTML: () => unwiredEvent('onMenuExportHTML'),
-    onMenuExportDOCX: () => unwiredEvent('onMenuExportDOCX'),
-    onMenuExportImage: () => unwiredEvent('onMenuExportImage'),
-    onMenuPlaySlideshow: () => unwiredEvent('onMenuPlaySlideshow'),
-    onMenuImportTheme: () => unwiredEvent('onMenuImportTheme'),
-    onSetTheme: () => unwiredEvent('onSetTheme'),
-    onSetCustomCSS: () => unwiredEvent('onSetCustomCSS'),
-    onSetPanelSide: () => unwiredEvent('onSetPanelSide'),
-    reportPanelSide: async () => {
-      notYet('reportPanelSide')
+    onSetPageWidth: (callback) => on<string>('set-page-width', callback),
+    reportPageWidth: async (width: string) => {
+      await invoke('report_page_width', { width })
     },
-    onSetPageWidth: () => unwiredEvent('onSetPageWidth'),
-    reportPageWidth: async () => {
-      notYet('reportPageWidth')
-    },
-    onSearch: () => unwiredEvent('onSearch'),
-    onFormatCommand: () => unwiredEvent('onFormatCommand'),
-    onToggleFilePanel: () => unwiredEvent('onToggleFilePanel'),
-    onToggleSourceMode: () => unwiredEvent('onToggleSourceMode'),
-    onEditorFontChanged: () => unwiredEvent('onEditorFontChanged'),
-    onOpenFontSettings: () => unwiredEvent('onOpenFontSettings')
+    onSearch: (callback) => on<void>('editor:search', () => callback()),
+    onFormatCommand: (callback) => on<string>('editor:format', callback),
+    onToggleFilePanel: (callback) => on<void>('toggle-file-panel', () => callback()),
+    onToggleSourceMode: (callback) => on<void>('toggle-source-mode', () => callback()),
+    onEditorFontChanged: (callback) => on<{ family: string; size: number }>('editor-font-changed', callback),
+    onOpenFontSettings: (callback) => on<void>('open-font-settings', () => callback())
   }
+
+  // A file dropped on the window opens like any other document. The webview has no
+  // path for a File object, so this comes from Tauri's own drag-drop event.
+  void getCurrentWebview()
+    .onDragDropEvent((event) => {
+      if (event.payload.type !== 'drop') return
+      for (const path of event.payload.paths) {
+        void invoke('open_file_path', { filePath: path }).catch(() => undefined)
+      }
+    })
+    .catch(() => undefined)
 
   return api
 }

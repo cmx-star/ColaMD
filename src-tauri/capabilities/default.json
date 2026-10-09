@@ -1,7 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "P1: the shell needs the core defaults only. File IO, dialogs and the updater get their own entries as they land (P2, P4 in docs/tauri-migration-plan.md).",
+  "description": "ColaMD's own commands need no permission entries; what is listed here is what the shell borrows from plugins: native dialogs for open/save and the file manager, plus the platform basics.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-destroy",
+    "core:window:allow-close",
+    "core:webview:allow-internal-toggle-devtools",
+    "dialog:default",
+    "opener:default",
+    "opener:allow-reveal-item-in-dir"
+  ]
 }
