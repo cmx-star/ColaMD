@@ -340,6 +340,7 @@ where
     R: tauri::Runtime,
     W: DialogExt<R>,
 {
+
     let suggested = fileio::suggest_file_name(file_path, Some(content)).unwrap_or_else(|| "Untitled".to_string());
     let (sender, receiver) = std::sync::mpsc::channel();
     let mut builder = parent
@@ -352,10 +353,16 @@ where
     if let Some(parent) = file_path.and_then(|path| path.parent()) {
         builder = builder.set_directory(parent);
     }
+    crate::trace::trace(|| "save dialog shown".to_string());
     builder.save_file(move |picked| {
         let _ = sender.send(picked.and_then(|path| path.into_path().ok()));
     });
-    receiver.recv_timeout(std::time::Duration::from_secs(600)).ok().flatten()
+    let chosen = receiver.recv_timeout(std::time::Duration::from_secs(600)).ok().flatten();
+    match &chosen {
+        Some(path) => crate::trace::trace(|| format!("save dialog chose {}", path.display())),
+        None => crate::trace::trace(|| "save dialog cancelled".to_string()),
+    }
+    chosen
 }
 
 #[tauri::command]
@@ -383,7 +390,10 @@ pub async fn save_file(
 
     let file_path = match current_path {
         Some(path) => path,
-        None => match save_dialog(&window, source_path.as_deref(), &content) {
+        None => match {
+            let _ = window.set_focus();
+            save_dialog(&window, source_path.as_deref(), &content)
+        } {
             Some(path) => path,
             None => return Ok(None),
         },
@@ -431,6 +441,7 @@ pub async fn save_file_as(
             return Ok(None);
         }
     }
+    let _ = window.set_focus();
     let Some(target) = save_dialog(&window, source_path.as_deref(), &content) else {
         return Ok(None);
     };
@@ -450,6 +461,7 @@ pub async fn save_file_as(
 /// (PRINCIPLES.md, 用户数据不可丢).
 #[tauri::command]
 pub async fn report_external_conflict(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>, local_content: String) -> Result<(), String> {
+    trace(|| format!("renderer reports a conflict ({} bytes of local work)", local_content.len()));
     let doc = ctx.doc(window.label());
     let file_path = { doc.lock().expect("doc lock").file_path.clone() };
 
@@ -691,7 +703,10 @@ pub async fn confirm_close(window: &tauri::Window) -> bool {
     let source_path = { doc.lock().expect("doc lock").file_path.clone() };
     let file_path = match source_path.clone() {
         Some(path) => path,
-        None => match save_dialog(window, None, &snapshot.content) {
+        None => match {
+            let _ = window.set_focus();
+            save_dialog(window, None, &snapshot.content)
+        } {
             Some(path) => path,
             None => return false,
         },

@@ -11,12 +11,18 @@ use tauri::{AppHandle, Emitter, Manager};
 
 /// The AppKit query, verbatim from the Electron build: family names localized for
 /// the interface language.
+/// Family names, asked of AppKit directly.
+///
+/// The Electron build called `localizedFamilyNameForFamilyFace`, which no longer
+/// exists in the AppKit that ships with current macOS: the script threw and the
+/// dialog listed nothing. Enumerating the array by index works, and it is what both
+/// shells need now (2026-10-09).
 const APPLESCRIPT: &str = concat!(
     "ObjC.import(\"AppKit\"); ",
-    "const nm = $.NSFontManager.sharedFontManager; ",
+    "const fm = $.NSFontManager.sharedFontManager; ",
+    "const fams = fm.availableFontFamilies; ",
     "const out = []; ",
-    "const fams = nm.availableFontFamilies.js; ",
-    "for (const f of fams) { out.push(nm.localizedFamilyNameForFamilyFace($(f), $()).js) }; ",
+    "for (let i = 0; i < fams.count; i++) { out.push(ObjC.unwrap(fams.objectAtIndex(i))) }; ",
     "out.join(\"\\n\")"
 );
 
@@ -46,7 +52,11 @@ fn families() -> Vec<String> {
 
 #[tauri::command]
 pub async fn list_system_fonts() -> Result<Vec<String>, String> {
-    Ok(families())
+    let names = tauri::async_runtime::spawn_blocking(families)
+        .await
+        .unwrap_or_default();
+    crate::trace::trace(|| format!("system fonts: {} families", names.len()));
+    Ok(names)
 }
 
 /// A font chosen in one window reaches the others, which is what keeps two open
@@ -91,6 +101,21 @@ mod tests {
     fn the_font_query_is_the_one_the_electron_build_used() {
         assert!(APPLESCRIPT.contains("NSFontManager"));
         assert!(APPLESCRIPT.contains("availableFontFamilies"));
+    }
+
+    /// The query is an external process, so a broken one fails silently and the
+    /// dialog just looks empty. This is the net for that (2026-10-09: the method the
+    /// Electron build called no longer exists and both shells listed nothing).
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_actually_reports_its_font_families() {
+        let names = families();
+        assert!(
+            names.len() > 10,
+            "AppKit returned {} families; the query is broken again",
+            names.len()
+        );
+        assert!(names.iter().any(|name| !name.is_empty()));
     }
 
     #[test]

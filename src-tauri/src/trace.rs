@@ -14,6 +14,16 @@
 
 use std::io::Write;
 use std::sync::OnceLock;
+use std::time::Instant;
+
+/// When the process started, so every line can carry a millisecond offset. Timing is
+/// what the migration has to be judged on (a document that takes four seconds to
+/// appear is a defect even though nothing errors), and a wall clock in the line makes
+/// "external write to reloaded editor" measurable after the fact.
+fn started() -> Instant {
+    static START: OnceLock<Instant> = OnceLock::new();
+    *START.get_or_init(Instant::now)
+}
 
 fn enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
@@ -29,7 +39,7 @@ pub fn trace(message: impl FnOnce() -> String) {
     if !enabled() {
         return;
     }
-    let line = format!("[colamd] {}\n", message());
+    let line = format!("[colamd +{}ms] {}\n", started().elapsed().as_millis(), message());
     eprint!("{line}");
 
     let path = log_path();

@@ -1,11 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "ColaMD's own commands need no permission entries; what is listed here is what the shell borrows from plugins: native dialogs for open/save and the file manager, plus the platform basics.",
-  "windows": ["main"],
+  "description": "ColaMD's own commands need no permission entries; what is listed here is what the shell borrows from plugins: native dialogs for open/save and the file manager, plus the platform basics. Every window matches: they are all created by this app and all load the same frontend, and scoping this to \"main\" left the windows opened by File > New Window without core permissions, which made them deaf to every menu command and impossible to drag (2026-10-09).",
+  "windows": ["*"],
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
+    "core:window:allow-start-dragging",
     "core:window:allow-destroy",
     "core:window:allow-close",
     "core:webview:allow-internal-toggle-devtools",

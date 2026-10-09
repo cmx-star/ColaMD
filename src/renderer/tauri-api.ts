@@ -40,10 +40,12 @@ function notYet(name: string): void {
 /** Subscribe to a shell event. The renderer's API is synchronous, so the promise is
  *  settled in the background and a failure is reported once. */
 function on<T>(event: string, callback: (payload: T) => void): void {
-  void listen<T>(event, (message) => callback(message.payload)).catch(() => {
+  void listen<T>(event, (message) => callback(message.payload)).catch((error) => {
+    // A window that cannot subscribe is deaf to every menu command, which looks
+    // exactly like the feature not existing. Say so loudly.
     if (reported.has(event)) return
     reported.add(event)
-    console.info(`[tauri-api] could not subscribe to ${event}`)
+    console.error(`[tauri-api] could not subscribe to ${event}:`, error)
   })
 }
 

@@ -11,6 +11,7 @@ use tauri::{Emitter, WebviewWindow};
 use crate::fileio;
 
 pub fn notify_external_change(window: &WebviewWindow, path: &Path) {
+    crate::trace::trace(|| format!("autosave refused: {} changed under us", path.display()));
     if let Ok(data) = fileio::read_document(path) {
         let _ = window.emit("file-changed", data.content);
     }

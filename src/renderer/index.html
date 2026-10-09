@@ -28,7 +28,11 @@
   </style>
 </head>
 <body>
-  <div id="titlebar">
+  <!-- data-tauri-drag-region is what makes this row draggable in the Tauri
+       shell: -webkit-app-region is a Chromium feature that WKWebView ignores. The
+       attribute only triggers when the mousedown target is the element itself, so
+       the buttons and tabs inside stay clickable. -->
+  <div id="titlebar" data-tauri-drag-region>
     <!-- The menu button is Windows-only (hidden everywhere else; macOS has the menu
          bar). On Windows a menu or options control belongs at the row's left end,
          before the document's own strip: that is where a Windows user looks for
@@ -42,7 +46,7 @@
       </svg>
       <span class="toolbar-tip">菜单</span>
     </button>
-    <div id="tab-bar" hidden></div>
+    <div id="tab-bar" data-tauri-drag-region hidden></div>
     <span id="save-status" aria-live="polite"></span>
     <button id="file-toggle-btn" aria-label="显示 / 隐藏文件列表 (⌘\)">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
