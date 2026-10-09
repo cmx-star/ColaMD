@@ -70,24 +70,35 @@ fn send_to_focused(app: &AppHandle, event: &str, payload: Option<&str>) {
 /// prefix and forwards what is left, so a kebab-case spelling here produced a command
 /// name the renderer did not know and the item silently did nothing (2026-10-09).
 ///
-/// (id suffix, label in Chinese, label in English, accelerator)
+/// (id suffix, label in Chinese, label in English, accelerator, shortcut hint)
+///
+/// `accelerator` is registered with the system, which draws it beside the label. The
+/// hint is for the one shortcut the renderer owns instead (see italic below): those
+/// cannot be registered, but the user still has to be able to see them.
+///
 /// Inline formatting only. The two list commands are gone (2026-10-09): typing `- `
 /// or `1. ` is what a Markdown writer does anyway, and a menu entry for it was one
 /// more thing to keep in step.
-const FORMAT_ITEMS: [(&str, &str, &str, &str); 5] = [
-    ("bold", "加粗", "Bold", "CmdOrCtrl+B"),
-    // No accelerator: the renderer owns ⌘I (see main.ts). A menu accelerator here did
-    // not reach the shell and the editor's own keymap swallowed the key instead.
-    ("italic", "斜体", "Italic", ""),
-    ("inlineCode", "行内代码", "Inline Code", "CmdOrCtrl+E"),
-    ("strikethrough", "删除线", "Strikethrough", "CmdOrCtrl+Shift+X"),
-    ("link", "链接（网址取自剪贴板）", "Link (URL from clipboard)", "CmdOrCtrl+K"),
+const FORMAT_ITEMS: [(&str, &str, &str, &str, &str); 5] = [
+    ("bold", "加粗", "Bold", "CmdOrCtrl+B", ""),
+    // ⌘I is the renderer's (see main.ts). Registering it here did not reach the shell,
+    // and the editor's own keymap turned it into "select parent syntax" instead. The
+    // hint is spelled out because a shortcut nobody can see is a shortcut nobody finds.
+    ("italic", "斜体", "Italic", "", "⌘I"),
+    ("inlineCode", "行内代码", "Inline Code", "CmdOrCtrl+E", ""),
+    ("strikethrough", "删除线", "Strikethrough", "CmdOrCtrl+Shift+X", ""),
+    ("link", "链接（网址取自剪贴板）", "Link (URL from clipboard)", "CmdOrCtrl+K", ""),
 ];
 
 fn format_submenu(app: &AppHandle) -> tauri::Result<tauri::menu::Submenu<tauri::Wry>> {
     let mut builder = SubmenuBuilder::new(app, t("格式", "Format"));
-    for (command, zh, en, accelerator) in FORMAT_ITEMS {
-        let item_builder = MenuItemBuilder::with_id(format!("format-{command}"), t(zh, en));
+    for (command, zh, en, accelerator, hint) in FORMAT_ITEMS {
+        let label = if hint.is_empty() {
+            t(zh, en).to_string()
+        } else {
+            format!("{}  {hint}", t(zh, en))
+        };
+        let item_builder = MenuItemBuilder::with_id(format!("format-{command}"), label.clone());
         let item_builder = if accelerator.is_empty() {
             item_builder
         } else {
@@ -95,8 +106,10 @@ fn format_submenu(app: &AppHandle) -> tauri::Result<tauri::menu::Submenu<tauri::
         };
         let item = item_builder.build(app)?;
         // A shortcut nobody can press and a shortcut that was never registered look the
-        // same from the outside; this is what the shell was asked to register.
-        crate::trace::trace(|| format!("format item {command} asks for {accelerator}"));
+        // same from the outside; this is what the shell was asked to register. The label
+        // is logged too, so a hint that never made it into the text is visible in the log
+        // rather than only on screen (COLAMD_TRACE=1).
+        crate::trace::trace(|| format!("format item {command} label=\"{label}\" asks for {accelerator}"));
         builder = builder.item(&item);
     }
     builder.build()
@@ -243,17 +256,10 @@ fn build_inner(
     let save_as = MenuItemBuilder::with_id("file-save-as", t("另存为...", "Save As..."))
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
-    // The export paths that are not ported yet stay disabled rather than doing
-    // nothing when clicked: an item that silently does nothing is indistinguishable
-    // from a broken one. HTML works, so it stays live (docs/tauri-migration-plan.md,
-    // P5, and src-tauri/src/export.rs for why each of the others differs).
+    // 幻灯片 PDF 仍未移植，保持禁用而不是点了没反应：一个静默无事的菜单项与坏掉的
+    // 菜单项无法区分。其余导出都已可用（docs/tauri-migration-plan.md 的 P5）。
     let not_ported = t("（此版本尚未提供）", "(not in this build)");
-    let export_pdf = MenuItemBuilder::with_id(
-        "file-export-pdf",
-        format!("{} {not_ported}", t("导出 PDF...", "Export PDF...")),
-    )
-    .enabled(false)
-    .build(app)?;
+    let export_pdf = MenuItemBuilder::with_id("file-export-pdf", t("导出 PDF...", "Export PDF...")).build(app)?;
     let export_slides_pdf = MenuItemBuilder::with_id(
         "file-export-slides-pdf",
         format!("{} {not_ported}", t("导出幻灯片 PDF...", "Export Slides PDF...")),
@@ -261,23 +267,16 @@ fn build_inner(
     .enabled(false)
     .build(app)?;
     let export_html = MenuItemBuilder::with_id("file-export-html", t("导出 HTML...", "Export HTML...")).build(app)?;
-    let export_word = MenuItemBuilder::with_id(
-        "file-export-word",
-        format!("{} {not_ported}", t("导出 Word...", "Export Word...")),
-    )
-    .enabled(false)
-    .build(app)?;
+    let export_word = MenuItemBuilder::with_id("file-export-word", t("导出 Word...", "Export Word...")).build(app)?;
     let export_image_desktop = MenuItemBuilder::with_id(
         "file-export-image-desktop",
-        format!("{} {not_ported}", t("导出图片（电脑阅读）...", "Export Image (Desktop)...")),
+        t("导出图片（电脑阅读）...", "Export Image (Desktop)..."),
     )
-    .enabled(false)
     .build(app)?;
     let export_image_mobile = MenuItemBuilder::with_id(
         "file-export-image-mobile",
-        format!("{} {not_ported}", t("导出图片（手机阅读）...", "Export Image (Mobile)...")),
+        t("导出图片（手机阅读）...", "Export Image (Mobile)..."),
     )
-    .enabled(false)
     .build(app)?;
 
     let mut file_builder = SubmenuBuilder::new(app, t("文件", "File"))
@@ -362,9 +361,13 @@ fn build_inner(
         .item(&panel_left)
         .build()?;
     // ⌘/ is the renderer's (main.ts): the accelerator here never arrived, and the
-    // editor's keymap turned it into an HTML comment instead.
-    let source_mode = MenuItemBuilder::with_id("view-source-mode", t("切换 Markdown 源码", "Toggle Markdown Source"))
+    // editor's keymap turned it into an HTML comment instead. The shortcut is spelled
+    // into the label instead, so it is still discoverable from the menu.
+    let source_mode = MenuItemBuilder::with_id("view-source-mode", t("切换 Markdown 源码  ⌘/", "Toggle Markdown Source  ⌘/"))
         .build(app)?;
+    // Same reason as the format items: whether the hint is really in the label is a fact
+    // worth having in the log, not a claim to take on trust.
+    crate::trace::trace(|| format!("menu hint: source mode label=\"{}\"", t("切换 Markdown 源码  ⌘/", "Toggle Markdown Source  ⌘/")));
     let font_settings = MenuItemBuilder::with_id("view-font-settings", t("编辑器字体…", "Editor Font…")).build(app)?;
     let width_narrow = CheckMenuItemBuilder::with_id("view-width-narrow", t("窄", "Narrow"))
         .checked(current_page_width == "narrow")
