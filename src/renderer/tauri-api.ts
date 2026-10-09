@@ -91,6 +91,10 @@ export function createTauriApi(): ColamdApi {
     saveFileAs: async (content: string, expectedPath?: string) =>
       invoke<string | null>('save_file_as', { content, expectedPath }),
     confirmDiscardTab: async (message: string) => invoke<boolean>('confirm_discard_tab', { message }),
+    onVerifyRun: (callback: (source: string) => void) => on<string>('verify-run', callback),
+    verifyReport: async (payload: string) => {
+      await invoke('verify_report', { payload })
+    },
     reportDirty: (isDirty: boolean) => {
       void invoke('report_dirty', { isDirty }).catch(() => undefined)
     },

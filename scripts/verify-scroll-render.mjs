@@ -6,15 +6,25 @@
 // `- **加粗**` 这种原始标记，要点一下才会恢复正常（2026-09-26 报的「长文档只渲染了前面，
 // 点击一下就渲染了」）。这个脚本就是盯这件事：每个滚动位置，视口里不许出现原始标记。
 //
-// 用法: npm run verify:scroll-render（先 npm run build）
+// 怎么驱动应用：以前走 Chrome DevTools 协议，那需要打包好的 Electron 应用。系统自带的
+// WebView 都不提供 CDP，所以改成一条**验证通道**：本脚本用 COLAMD_VERIFY 告诉应用跑哪个
+// 检查项（检查项本身随包编译在渲染层里：src/renderer/verify/checks.ts，页面 CSP 不许
+// eval，所以不能像旧脚本那样把源码传进去），应用把结果写到 COLAMD_VERIFY_OUT 指定的
+// 文件。整段「滚动 → 等解析铺满 → 检查」因此跑在页面内（轮询必须在页面内，跨进程来回
+// 等会慢到没法用），脚本只负责发起、读数、判定。
+//
+// 用法: npm run verify:scroll-render
+//       先构建：npm run build && npx tauri build --no-bundle
 // 窗口放在屏幕外，不占用屏幕。
 import { spawn } from 'node:child_process'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const APP = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
+const APP = join(dirname(fileURLToPath(import.meta.url)), '..')
 const WORK = join(homedir(), 'Library', 'Caches', `colamd-verify-scroll-${Date.now()}`)
+const BINARY = process.env.COLAMD_BINARY ?? join(APP, 'src-tauri', 'target', 'release', 'colamd')
 
 /** 文档要足够长，长到「打开时解析到的那一段」离尾部很远。 */
 const ROWS = 1200
@@ -29,110 +39,48 @@ function fixture() {
   return lines.join('\n')
 }
 
-function connect(url) {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url)
-    let id = 0
-    const pending = new Map()
-    ws.addEventListener('open', () => resolve({
-      send(method, params = {}) {
-        return new Promise((res, rej) => {
-          const msgId = ++id
-          pending.set(msgId, { res, rej })
-          ws.send(JSON.stringify({ id: msgId, method, params }))
-        })
-      },
-      close: () => ws.close()
-    }))
-    ws.addEventListener('message', (event) => {
-      const msg = JSON.parse(event.data)
-      if (msg.id && pending.has(msg.id)) {
-        const { res, rej } = pending.get(msg.id)
-        pending.delete(msg.id)
-        msg.error ? rej(new Error(JSON.stringify(msg.error))) : res(msg.result)
-      }
-    })
-    ws.addEventListener('error', () => reject(new Error(`连接不上 ${url}`)))
-  })
-}
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function waitTarget(port, predicate, ms = 30000) {
-  const started = Date.now()
-  while (Date.now() - started < ms) {
-    try {
-      const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
-      const hit = list.find(predicate)
-      if (hit) return hit
-    } catch { /* 还没起来 */ }
-    await sleep(250)
-  }
-  throw new Error('等不到调试目标')
-}
-
-function evaluate(client, expression) {
-  return client.send('Runtime.evaluate', {
-    expression, includeCommandLineAPI: true, returnByValue: true, awaitPromise: true
-  }).then((result) => {
-    if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails).slice(0, 400))
-    return result.result?.value
-  })
-}
-
-/** 视口里那几行：有几个还带着原始标记，有几个带内容装饰。 */
-const PROBE = `(() => {
-  const s = document.querySelector(".cm-scroller")
-  const sr = s.getBoundingClientRect()
-  const lines = [...document.querySelectorAll("#editor .cm-line")]
-    .filter((l) => { const r = l.getBoundingClientRect(); return r.bottom > sr.top && r.top < sr.bottom })
-  return JSON.stringify({
-    top: Math.round(s.scrollTop),
-    rows: lines.length,
-    raw: lines.filter((l) => /\\*\\*/.test(l.textContent)).length,
-    decorated: lines.filter((l) => /cm-md-(li|strong|hidden|code)/.test(l.className)).length,
-    first: (lines[0]?.textContent ?? "").slice(0, 18)
-  })
-})()`
 
 async function main() {
+  if (!existsSync(BINARY)) {
+    console.error(`找不到应用：${BINARY}\n先构建：npm run build && npx tauri build --no-bundle`)
+    process.exitCode = 2
+    return
+  }
+
   mkdirSync(WORK, { recursive: true })
   const source = join(WORK, 'big.md')
+  const answer = join(WORK, 'answer.json')
   writeFileSync(source, fixture(), 'utf8')
 
-  const port = 9960 + Math.floor(Math.random() * 30)
-  const child = spawn('npx', ['electron', '.', source, `--user-data-dir=${join(WORK, 'udd')}`,
-    '--window-position=-4000,-4000', `--remote-debugging-port=${port}`
-  ], { cwd: APP, stdio: 'ignore', detached: true })
+  const child = spawn(BINARY, [source], {
+    cwd: APP,
+    stdio: 'ignore',
+    detached: true,
+    env: { ...process.env, COLAMD_VERIFY: 'scroll-render', COLAMD_VERIFY_OUT: answer },
+  })
 
   let failures = 0
   try {
-    const page = await waitTarget(port, (t) => t.type === 'page' && /index\.html/.test(t.url))
-    const renderer = await connect(page.webSocketDebuggerUrl)
-    for (let i = 0; i < 80; i++) {
-      const lines = await evaluate(renderer, `document.querySelectorAll('#editor .cm-line').length`)
-      if (Number(lines) > 5) break
-      await sleep(250)
-    }
-
-    for (const position of POSITIONS) {
-      await evaluate(renderer, `document.querySelector(".cm-scroller").scrollTop = ${position}`)
-      // 装饰是从语法树上读的，而语法树按视口惰性解析：滚过去之后要等它铺到视口。
-      // 机器忙的时候这一步会慢，所以轮询等它稳定，而不是睡一个固定时长
-      // （2026-09-26：固定 1600ms 在连续跑测试时会假红）。
-      let state = null
-      const started = Date.now()
-      for (let i = 0; i < 25; i++) {
-        state = JSON.parse(await evaluate(renderer, PROBE))
-        if (state.raw === 0 && state.decorated > 0) break
-        await sleep(200)
+    let payload = null
+    for (let i = 0; i < 150; i++) {
+      if (existsSync(answer)) {
+        payload = JSON.parse(readFileSync(answer, 'utf8'))
+        break
       }
-      const waited = Date.now() - started
+      await sleep(200)
+    }
+    if (!payload) throw new Error('等不到应用的验证结果（30 秒）')
+    if (!payload.ok) throw new Error(`页面里执行失败：${payload.failure}`)
+
+    // payload.result 已经是解析过的值（外层就是 JSON），不要再 parse 一次
+    for (const state of payload.result) {
       const ok = state.raw === 0 && state.decorated > 0
       if (!ok) failures++
-      console.log(`${ok ? '✓' : '✗'} 滚到 ${String(position).padStart(6)}：` +
+      console.log(`${ok ? '✓' : '✗'} 滚到 ${String(state.position).padStart(6)}：` +
         `视口 ${state.rows} 行，原始标记 ${state.raw} 行，有装饰 ${state.decorated} 行，` +
-        `等了 ${waited}ms，首行「${state.first}」`)
+        `等了 ${state.waited}ms，首行「${state.first}」`)
     }
   } finally {
     try { process.kill(-child.pid, 'SIGKILL') } catch { /* 已经退出 */ }
@@ -150,5 +98,5 @@ async function main() {
 
 main().catch((error) => {
   console.error(`✗ ${error.message}`)
-  process.exitCode = 1
+  process.exitCode = 2
 })

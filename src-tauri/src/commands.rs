@@ -571,6 +571,28 @@ pub async fn confirm_discard_tab(window: WebviewWindow, message: String) -> Resu
     Ok(answer.as_deref() == Some(discard.as_str()))
 }
 
+/// The verification channel, used by the acceptance scripts (scripts/verify-*.mjs).
+///
+/// They used to drive the app over the Chrome DevTools protocol. No system WebView
+/// offers that, so the shell reads the check *name* from COLAMD_VERIFY, hands it to
+/// the renderer (the checks are bundled there; a page cannot eval, its CSP forbids it),
+/// and writes the renderer's answer to COLAMD_VERIFY_OUT.
+#[tauri::command]
+pub async fn verify_report(payload: String) -> Result<(), String> {
+    let path = std::env::var("COLAMD_VERIFY_OUT").map_err(|_| "COLAMD_VERIFY_OUT is not set".to_string())?;
+    std::fs::write(&path, payload).map_err(|error| error.to_string())?;
+    trace(|| format!("verify report written to {path}"));
+    Ok(())
+}
+
+fn hand_over_verify_probe(window: &WebviewWindow) {
+    let Ok(name) = std::env::var("COLAMD_VERIFY") else {
+        return;
+    };
+    trace(|| format!("verify check requested: {name}"));
+    let _ = window.emit("verify-run", name);
+}
+
 #[tauri::command]
 pub async fn log_renderer_error(message: String) {
     use std::io::Write;
@@ -793,6 +815,8 @@ pub async fn renderer_ready(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>
     let fullscreen = window.is_fullscreen().unwrap_or(false);
     trace(|| format!("renderer ready (fullscreen={fullscreen})"));
     let _ = window.emit("fullscreen-changed", fullscreen);
+
+    hand_over_verify_probe(&window);
 
     let queued = startup.drain();
     let app = window.app_handle().clone();

@@ -58,36 +58,6 @@ pub fn open_untitled_window(app: &AppHandle) {
     }
 }
 
-/// A window showing text that has no file behind it (the changelog, the cheatsheet).
-pub fn open_memory_window(app: &AppHandle, content: String, browse_dir: Option<PathBuf>) {
-    let label = format!("doc-{}", NEXT_WINDOW.fetch_add(1, Ordering::Relaxed));
-    let builder = configure(WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into())));
-    let Ok(window) = builder.build() else {
-        crate::trace::trace(|| format!("could not open window {label}"));
-        return;
-    };
-
-    if let Some(dir) = browse_dir {
-        let ctx = app.state::<crate::commands::AppCtx>();
-        let doc = ctx.doc(&label);
-        doc.lock().expect("doc lock").browse_path = Some(dir);
-    }
-
-    // The renderer registers its listeners during init, and a window that never
-    // reports readiness would otherwise stay blank, so the document is handed over
-    // after a short grace period.
-    let payload = serde_json::json!({ "path": null, "content": content });
-    let emitter = window.clone();
-    // Give the page a moment to finish init before handing it the document; the
-    // renderer's ready signal is the reliable trigger, and this is the fallback for
-    // windows that never report one.
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-        let _ = emitter.emit("file-opened", payload);
-    });
-    let _ = window.set_focus();
-}
-
 /// Open a document: into this window when it is empty, otherwise as a new tab.
 pub fn open_document(app: &AppHandle, window: Option<tauri::WebviewWindow>, path: PathBuf) {
     let Some(window) = window.or_else(|| app.get_webview_window("main")) else {

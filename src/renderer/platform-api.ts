@@ -91,6 +91,11 @@ export interface ColamdApi {
   downloadUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
   reportDirty: (isDirty: boolean) => void
+  /** Verification channel: run the named check in the page and report the result.
+   *  It exists because the acceptance scripts used to drive the app over the Chrome
+   *  DevTools protocol, which no system WebView offers. */
+  onVerifyRun: (callback: (name: string) => void) => void
+  verifyReport: (payload: string) => Promise<void>
   /** A real confirmation for discarding unsaved content. `window.confirm` is not
    *  available in every shell, and the shell that lacks it answers "yes". */
   confirmDiscardTab: (message: string) => Promise<boolean>

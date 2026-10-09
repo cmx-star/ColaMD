@@ -10,6 +10,7 @@ import { setUiLanguage, isChinese, type UiLanguage } from './ui-language'
 import { applyEditorFont, loadSavedEditorFont, showFontSettingsModal } from './editor/font-settings'
 import { createTauriApi } from './tauri-api'
 import type { ColamdApi, FileManagerName, SiblingFile } from './platform-api'
+import { CHECKS } from './verify/checks'
 import './themes/base.css'
 import './themes/premium.css'
 import './themes/editor-preview.css'
@@ -1782,6 +1783,84 @@ async function init(): Promise<void> {
   // reacts to this signal by flushing queued tab-opens and by trusting the
   // window with close/quit flows. It sat mid-init once and the flush raced
   // bindTabBar: files handed over at launch were dropped silently.
+  // Verification channel: the shell names a check (COLAMD_VERIFY), the check runs
+  // here from bundled code, and the answer goes back for the script that is waiting.
+  // No eval: the page's CSP forbids it, and it should. See src/renderer/verify/checks.ts.
+  api.onVerifyRun((name) => {
+    void (async () => {
+      let result: unknown
+      let failure: string | null = null
+      try {
+        const check = CHECKS[name]
+        if (!check) throw new Error(`未知的验收项：${name}`)
+        result = await check()
+      } catch (error) {
+        failure = error instanceof Error ? (error.stack ?? error.message) : String(error)
+      }
+      await api.verifyReport(JSON.stringify({ ok: failure === null, result, failure }))
+    })()
+  })
+
+  // 这三个监听器必须在报告 ready 之前注册：壳一收到 ready 就会发 'file-opened'
+  // （启动参数里的文件由此进入编辑器）、'verify-run' 和文件变更事件，注册晚了事件就丢了。
+  // 「启动时带文件打开」曾经因此一直是坏的：壳读了文件，窗口里却始终是欢迎页
+  // （2026-10-09 由滚动渲染验收脚本暴露）。
+  api.onSiblingsChanged((files) => {
+    // A watcher refresh can change any directory that is open, so drop the
+    // cached levels and let the expanded ones read themselves again.
+    panelChildren.clear()
+    renderFileList(files)
+  })
+
+  api.onFileOpened((data) => {
+    releaseMermaidRenderer()
+    // A document opened into a window that has none yet (a launch with a file)
+    // lands in the first tab rather than creating a second one.
+    ensureTab()
+    currentFilePath = data.path
+    applyDocumentFileUrl(data.fileUrl ?? null)
+    dirty = false
+    const tab = activeTab()
+    if (tab) {
+      tab.filePath = data.path
+      tab.dirty = false
+      tab.revision = documentRevision
+      tab.diskContent = data.content
+    }
+    resetDirty()
+    setContent(data.content, true)
+    const resetScroll = () => {
+      editorScroller().scrollTop = 0
+      sourceEl().scrollTop = 0
+    }
+    resetScroll()
+    requestAnimationFrame(resetScroll)
+    updateFileTitle()
+    updatePanelVisibility()
+    refreshSiblings()
+    scheduleOutlineUpdate()
+    renderTabBar()
+  })
+
+  api.onFileChanged((content) => {
+    if (dirty) {
+      raiseExternalConflict()
+      return
+    }
+    const body = takeFrontmatter(content)
+    if (sourceModeActive) {
+      sourceEl().value = body
+    } else {
+      // An external write is not something the reader can undo into; making it
+      // one undo step would also let a stray undo write stale content back.
+      setMarkdownProgrammatically(body, true)
+    }
+    updateSourceToggle()
+    updateWordCount()
+    resetDirty()
+    scheduleOutlineUpdate()
+  })
+
   api.reportRendererReady()
 
   // Save before switching files. If saving is cancelled or fails, preserve the
@@ -1845,12 +1924,6 @@ async function init(): Promise<void> {
   // by sections passed along the way (review on #68).
   onEditorJumpPhase((phase) => (phase === 'start' ? beginOutlineJump() : endOutlineJump()))
 
-  api.onSiblingsChanged((files) => {
-    // A watcher refresh can change any directory that is open, so drop the
-    // cached levels and let the expanded ones read themselves again.
-    panelChildren.clear()
-    renderFileList(files)
-  })
   updatePanelVisibility()
   await refreshSiblings()
 
@@ -1880,53 +1953,6 @@ async function init(): Promise<void> {
     applyContent('')
     scheduleOutlineUpdate()
     renderTabBar()
-  })
-  api.onFileOpened((data) => {
-    releaseMermaidRenderer()
-    // A document opened into a window that has none yet (a launch with a file)
-    // lands in the first tab rather than creating a second one.
-    ensureTab()
-    currentFilePath = data.path
-    applyDocumentFileUrl(data.fileUrl ?? null)
-    dirty = false
-    const tab = activeTab()
-    if (tab) {
-      tab.filePath = data.path
-      tab.dirty = false
-      tab.revision = documentRevision
-      tab.diskContent = data.content
-    }
-    resetDirty()
-    setContent(data.content, true)
-    const resetScroll = () => {
-      editorScroller().scrollTop = 0
-      sourceEl().scrollTop = 0
-    }
-    resetScroll()
-    requestAnimationFrame(resetScroll)
-    updateFileTitle()
-    updatePanelVisibility()
-    refreshSiblings()
-    scheduleOutlineUpdate()
-    renderTabBar()
-  })
-  api.onFileChanged((content) => {
-    if (dirty) {
-      raiseExternalConflict()
-      return
-    }
-    const body = takeFrontmatter(content)
-    if (sourceModeActive) {
-      sourceEl().value = body
-    } else {
-      // An external write is not something the reader can undo into; making it
-      // one undo step would also let a stray undo write stale content back.
-      setMarkdownProgrammatically(body, true)
-    }
-    updateSourceToggle()
-    updateWordCount()
-    resetDirty()
-    scheduleOutlineUpdate()
   })
 
   api.onSetTheme((theme) => applyTheme(theme))

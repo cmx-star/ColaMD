@@ -176,6 +176,7 @@ fn main() {
             commands::reveal_file,
             commands::reveal_path,
             commands::report_dirty,
+            commands::verify_report,
             commands::confirm_discard_tab,
             commands::renderer_ready,
             commands::log_renderer_error,
