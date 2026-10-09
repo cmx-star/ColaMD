@@ -9,6 +9,7 @@ import { applyTheme, loadSavedTheme } from './themes/theme-manager'
 import { setUiLanguage, isChinese, type UiLanguage } from './ui-language'
 import { applyEditorFont, loadSavedEditorFont, showFontSettingsModal } from './editor/font-settings'
 import { createTauriApi } from './tauri-api'
+import type { ColamdApi, FileManagerName, SiblingFile } from './platform-api'
 import './themes/base.css'
 import './themes/premium.css'
 import './themes/editor-preview.css'
@@ -36,7 +37,7 @@ const updateBannerActionEl = () => document.getElementById('update-banner-action
 let currentFilePath: string | null = null
 // 当前文档的 file:// URL：图片的相对路径按它解析（文件里存的那串路径不动）。
 let currentFileUrl: string | null = null
-let fileManagerName: import('../preload/index').FileManagerName = 'file-manager'
+let fileManagerName: FileManagerName = 'file-manager'
 let dirty = false
 // The active document's YAML frontmatter. It is carried here instead of inside
 // the editor: the rich text parser would rewrite it on the way back out, and it
@@ -108,7 +109,7 @@ function applyPanelSide(side: string): void {
   const next = side === 'left' ? 'left' : 'right'
   document.body.classList.toggle('panel-left', next === 'left')
   localStorage.setItem(PANEL_SIDE_KEY, next)
-  window.electronAPI?.reportPanelSide?.(next)
+  window.colamd?.reportPanelSide?.(next)
 }
 
 applyPanelSide(localStorage.getItem(PANEL_SIDE_KEY) ?? 'right')
@@ -131,7 +132,7 @@ function applyPageWidth(width: string): void {
     if (className) document.body.classList.toggle(className, className === PAGE_WIDTH_CLASSES[next])
   }
   localStorage.setItem(PAGE_WIDTH_KEY, next)
-  window.electronAPI?.reportPageWidth?.(next)
+  window.colamd?.reportPageWidth?.(next)
 }
 
 applyPageWidth(localStorage.getItem(PAGE_WIDTH_KEY) ?? 'standard')
@@ -155,7 +156,7 @@ let documentRevision = 0
 let saveQueue: Promise<void> = Promise.resolve()
 
 function reportDirty(): void {
-  window.electronAPI.reportDirty(dirty)
+  window.colamd.reportDirty(dirty)
 }
 
 // --- Save status hint (#49) ---
@@ -219,7 +220,7 @@ function showRecoveryHint(recoveryPath: string): void {
   el.style.pointerEvents = 'auto'
   el.style.cursor = 'pointer'
   el.onclick = () => {
-    void window.electronAPI?.revealPath?.(recoveryPath)
+    void window.colamd?.revealPath?.(recoveryPath)
   }
   saveStatusTimer = setTimeout(() => clearSaveStatus(), 12000)
 }
@@ -244,7 +245,7 @@ function raiseExternalConflict(): void {
     el.classList.remove('saved')
     el.classList.add('pending')
   }
-  window.electronAPI.reportExternalConflict?.(getFileContent())
+  window.colamd.reportExternalConflict?.(getFileContent())
 }
 
 // --- Tabs (design.md) ---
@@ -479,7 +480,7 @@ function renderTabBar(): void {
   active?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   // Let the main process know which files this window holds in tabs, so opening
   // an already open document can focus that tab instead of duplicating it.
-  window.electronAPI.setTabFiles(tabs.map((tab) => tab.filePath).filter((path): path is string => !!path))
+  window.colamd.setTabFiles(tabs.map((tab) => tab.filePath).filter((path): path is string => !!path))
 }
 
 function showBlankDocument(): void {
@@ -563,7 +564,7 @@ async function openNewTab(): Promise<void> {
   applyDocumentFileUrl(null)
   // Tell the main process the window is now on an untitled document, otherwise
   // its notion of the active file still points at the previous tab's file.
-  await window.electronAPI.activateFile(null)
+  await window.colamd.activateFile(null)
   showBlankDocument()
   renderTabBar()
   // The new tab exists to be typed in, so the caret goes there without a click.
@@ -584,7 +585,7 @@ function applyDocumentFileUrl(url: string | null): void {
 
 /** 路径刚变过（另存为、自动保存落盘）时，问主进程要一次 URL。 */
 async function refreshDocumentFileUrl(): Promise<void> {
-  const url = currentFilePath ? await window.electronAPI.fileUrl(currentFilePath) : null
+  const url = currentFilePath ? await window.colamd.fileUrl(currentFilePath) : null
   applyDocumentFileUrl(url)
 }
 
@@ -602,7 +603,7 @@ async function activateTab(id: string): Promise<void> {
     // watcher, the title and the recent list, and reports whether the file
     // changed while this tab sat in the background. An untitled tab passes null
     // so the window stops pointing at the tab we are leaving.
-    const disk = await window.electronAPI.activateFile(target.filePath)
+    const disk = await window.colamd.activateFile(target.filePath)
     applyDocumentFileUrl(disk?.fileUrl ?? null)
     // This document may have been written in a different style than the one we
     // are leaving; its content comes back with it, and the style lives in the
@@ -673,7 +674,7 @@ async function closeTab(id: string): Promise<void> {
     // A background tab is not the active document, so it is written straight to
     // its own path; an untitled one cannot be written without a dialog.
     if (tab.filePath) {
-      const saved = await window.electronAPI.saveFile(tab.content, tab.filePath, false, false)
+      const saved = await window.colamd.saveFile(tab.content, tab.filePath, false, false)
       if (!saved) return
       tab.dirty = false
     } else if (!(await confirmDiscardUntitled())) {
@@ -689,7 +690,7 @@ async function closeTab(id: string): Promise<void> {
     // denied (the guard never does for a clean window), the fallback remains.
     activeTabId = null
     await openNewTab()
-    void window.electronAPI.closeWindow()
+    void window.colamd.closeWindow()
     return
   }
   if (tab.id === activeTabId) {
@@ -705,7 +706,7 @@ async function closeTab(id: string): Promise<void> {
 // anything. That silently discarded unsaved tabs (2026-10-09), which is the one
 // failure this app must never have.
 async function confirmDiscardUntitled(): Promise<boolean> {
-  return window.electronAPI.confirmDiscardTab(isChinese()
+  return window.colamd.confirmDiscardTab(isChinese()
     ? '这个标签页还没有保存，关闭会丢掉里面的内容。'
     : 'This tab has unsaved content. Close it anyway?')
 }
@@ -720,7 +721,7 @@ async function openFileInNewTab(path: string): Promise<void> {
   }
   const current = activeTab()
   if (current && !current.filePath && !current.dirty) {
-    await window.electronAPI.openSibling(path)
+    await window.colamd.openSibling(path)
     return
   }
   await openNewTab()
@@ -729,7 +730,7 @@ async function openFileInNewTab(path: string): Promise<void> {
   // for the next file, overwriting the one just opened (#99).
   const claimed = activeTab()
   if (claimed) claimed.filePath = path
-  await window.electronAPI.openSibling(path)
+  await window.colamd.openSibling(path)
 }
 
 // Closing several tabs runs one at a time: each close may need its own unsaved
@@ -744,7 +745,7 @@ async function closeTabsMatching(keep: (index: number) => boolean): Promise<void
   }
 }
 
-function bindTabBar(api: import('../preload/index').ElectronAPI): void {
+function bindTabBar(api: ColamdApi): void {
   // Tab-opens are serialized: each request awaits main (activateFile,
   // file-opened) before the next runs. Without this, a burst of queued opens
   // (multi-file launch, fast second-instance) interleaves and two documents
@@ -889,7 +890,7 @@ async function runAutosave(): Promise<void> {
   // rebuildMenu=false: autosave must never rebuild the app menu (macOS IME)
   // autosave=true: the main process may refuse the write when the file changed
   // on disk since our last read or write, and ask the user instead.
-  const path = await enqueueSave(() => window.electronAPI.saveFile(content, filePath, false, true))
+  const path = await enqueueSave(() => window.colamd.saveFile(content, filePath, false, true))
   if (path && revision === documentRevision && currentFilePath === filePath) {
     if (path !== filePath) void refreshDocumentFileUrl()
     currentFilePath = path
@@ -906,8 +907,8 @@ async function saveCurrent(saveAs = false): Promise<boolean> {
   // '' states plainly that the active document is untitled, so a save can never
   // be written into a file the window happens to have open in another tab.
   const path = await enqueueSave(() => saveAs
-    ? window.electronAPI.saveFileAs(content, expectedPath ?? '')
-    : window.electronAPI.saveFile(content, expectedPath ?? '', true))
+    ? window.colamd.saveFileAs(content, expectedPath ?? '')
+    : window.colamd.saveFile(content, expectedPath ?? '', true))
   if (!path || currentFilePath !== expectedPath) return false
 
   if (path !== expectedPath) void refreshDocumentFileUrl()
@@ -1319,13 +1320,13 @@ function updateFileTitle(): void {
 // nothing until the reader asks for it. Expansion lives in memory only — no
 // workspace, nothing restored on the next launch.
 const PANEL_INDENT = 12
-let panelRoot: import('../preload/index').SiblingFile[] = []
-const panelChildren = new Map<string, import('../preload/index').SiblingFile[]>()
+let panelRoot: SiblingFile[] = []
+const panelChildren = new Map<string, SiblingFile[]>()
 const panelExpanded = new Set<string>()
 const panelLoading = new Set<string>()
 
 type PanelRow = {
-  file: import('../preload/index').SiblingFile
+  file: import('./platform-api').SiblingFile
   depth: number
   expandable: boolean
   expanded: boolean
@@ -1336,7 +1337,7 @@ type PanelRow = {
 // hover, active state and hit-testing keep working the way they always have.
 function panelRows(): PanelRow[] {
   const rows: PanelRow[] = []
-  const walk = (entries: import('../preload/index').SiblingFile[], depth: number): void => {
+  const walk = (entries: import('./platform-api').SiblingFile[], depth: number): void => {
     for (const file of entries) {
       const expanded = file.kind === 'directory' && panelExpanded.has(file.path)
       rows.push({ file, depth, expandable: file.kind === 'directory', expanded, empty: false })
@@ -1357,7 +1358,7 @@ function panelRows(): PanelRow[] {
 function loadPanelDirectory(dir: string): void {
   if (panelLoading.has(dir)) return
   panelLoading.add(dir)
-  void window.electronAPI.listDirectory(dir).then((children) => {
+  void window.colamd.listDirectory(dir).then((children) => {
     panelLoading.delete(dir)
     if (!children) return
     panelChildren.set(dir, children)
@@ -1374,7 +1375,7 @@ function togglePanelDirectory(dir: string): void {
   renderFileList(panelRoot)
 }
 
-function renderFileList(files: import('../preload/index').SiblingFile[]): void {
+function renderFileList(files: import('./platform-api').SiblingFile[]): void {
   panelRoot = files
   hideTip()
   const list = fileListEl()
@@ -1441,7 +1442,7 @@ function renderFileList(files: import('../preload/index').SiblingFile[]): void {
 }
 
 async function refreshSiblings(): Promise<void> {
-  const files = await window.electronAPI.listSiblings()
+  const files = await window.colamd.listSiblings()
   if (files) renderFileList(files)
 }
 
@@ -1587,7 +1588,7 @@ async function exportCurrentHTML(): Promise<void> {
     })
   }
 
-  await withExportLayout(() => window.electronAPI.exportHTML(getExportSnapshot(content)))
+  await withExportLayout(() => window.colamd.exportHTML(getExportSnapshot(content)))
 
   if (wasSourceMode) {
     enterSourceMode(content, sourceScrollRatio)
@@ -1607,7 +1608,7 @@ async function exportCurrentImage(preset: 'desktop' | 'mobile'): Promise<void> {
     })
   }
 
-  await withExportLayout(() => window.electronAPI.exportImage(getExportSnapshot(content), preset))
+  await withExportLayout(() => window.colamd.exportImage(getExportSnapshot(content), preset))
 
   if (wasSourceMode) enterSourceMode(content, sourceScrollRatio)
 }
@@ -1680,11 +1681,11 @@ async function toggleSlideshow(): Promise<void> {
   const started = startSlideshow({
     onStart: () => {
       setEditorEditable(false)
-      void window.electronAPI.setSlideshowFullscreen(true)
+      void window.colamd.setSlideshowFullscreen(true)
     },
     onExit: () => {
       setEditorEditable(true)
-      void window.electronAPI.setSlideshowFullscreen(false)
+      void window.colamd.setSlideshowFullscreen(false)
       if (wasSourceMode) enterSourceMode(content, sourceScrollRatio)
     }
   })
@@ -1694,7 +1695,7 @@ async function toggleSlideshow(): Promise<void> {
 }
 
 async function init(): Promise<void> {
-  const api = window.electronAPI
+  const api = window.colamd
   // macOS keeps its own overlay scrollbars (drawn while you scroll, no layout
   // space, never in the way). The thin custom scrollbar is only for Windows and
   // Linux, where the platform default is a chunky always-on bar.
@@ -1771,7 +1772,7 @@ async function init(): Promise<void> {
     // Report every tab that still has unsaved content. The main process writes
     // the ones with a path and refuses to close on the untitled ones, so a
     // background tab can never be dropped silently.
-    window.electronAPI.respondDocumentState(requestId, {
+    window.colamd.respondDocumentState(requestId, {
       dirty,
       content: getFileContent(),
       tabs: tabs.filter((tab) => tab.dirty).map((tab) => ({ path: tab.filePath, content: tab.content }))
@@ -2050,14 +2051,13 @@ async function init(): Promise<void> {
   })
 }
 
-// The preload bridge hands the renderer `window.electronAPI`; under Tauri there is
-// no preload, so the same shape is built here before anything reads it. Both shells
-// therefore run this file unchanged (docs/tauri-migration-plan.md, decision D1).
-if (!window.electronAPI) window.electronAPI = createTauriApi()
+// The shell hands the renderer one object with the shape in platform-api.ts, built
+// before anything reads it.
+if (!window.colamd) window.colamd = createTauriApi()
 
 // A packaged app has no console: without the IPC copy of this, a renderer that
 // dies during init leaves nothing behind but a white window (#126).
 init().catch((e) => {
   console.error('ColaMD init failed:', e)
-  void window.electronAPI.logRendererError(e instanceof Error ? (e.stack ?? e.message) : String(e))
+  void window.colamd.logRendererError(e instanceof Error ? (e.stack ?? e.message) : String(e))
 })

@@ -2,7 +2,6 @@
   "name": "colamd",
   "version": "2.7.2",
   "description": "A free, elegant Markdown editor for macOS, Windows and Linux. Simple by design, always in sync with the file on disk.",
-  "main": "dist/main/index.js",
   "author": {
     "name": "marswave.ai",
     "email": "hello@marswave.ai"
@@ -14,24 +13,20 @@
     "url": "https://github.com/marswaveai/colamd.git"
   },
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "dist": "electron-vite build && electron-builder",
-    "dist:mac": "electron-vite build && electron-builder --mac",
-    "dist:win": "electron-vite build && electron-builder --win",
-    "dist:linux": "electron-vite build && electron-builder --linux",
-    "build:web": "vite build --config vite.web.config.ts",
-    "preview:web": "vite preview --config vite.web.config.ts",
+    "app:build": "tauri build",
+    "build": "npm run build:tauri:renderer",
     "build:tauri:renderer": "vite build --config vite.tauri.config.ts",
-    "dev:tauri:renderer": "vite --config vite.tauri.config.ts",
-    "tauri": "tauri",
+    "build:web": "vite build --config vite.web.config.ts",
     "check:theme-colors": "node scripts/check-theme-colors.mjs",
-    "verify:markdown": "node scripts/verify-markdown.mjs",
+    "dev": "tauri dev",
+    "dev:tauri:renderer": "vite --config vite.tauri.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts",
+    "tauri": "tauri",
+    "verify:export-pdf": "node scripts/verify-export-pdf.mjs",
     "verify:features": "node scripts/verify-features.mjs",
-    "verify:scroll-render": "node scripts/verify-scroll-render.mjs",
     "verify:image-export": "node scripts/verify-image-export.mjs",
-    "verify:export-pdf": "node scripts/verify-export-pdf.mjs"
+    "verify:markdown": "node scripts/verify-markdown.mjs",
+    "verify:scroll-render": "node scripts/verify-scroll-render.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -39,11 +34,8 @@
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/search": "^6.7.2",
     "@lezer/markdown": "^1.7.2",
-    "@milkdown/kit": "^7.19.2",
-    "@milkdown/plugin-math": "^7.5.9",
     "@tauri-apps/api": "^2.12.1",
     "docx": "^9.7.1",
-    "electron-updater": "^6.8.9",
     "katex": "^0.16.47",
     "mermaid": "^11.17.0",
     "remark-breaks": "^4.0.0"
@@ -51,9 +43,6 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.4",
     "@types/katex": "^0.16.8",
-    "electron": "^44.3.0",
-    "electron-builder": "^26.16.1",
-    "electron-vite": "^3.0.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0"
   }

@@ -1,32 +1,21 @@
-// The Tauri side of `window.electronAPI`.
+// The Tauri side of `window.colamd`.
 //
-// The renderer was written against one object: `ElectronAPI`, declared in
-// src/preload/index.ts and handed to the page by the preload script. This file
-// builds the same shape on top of Tauri, so every other renderer file stays as it
-// is (docs/tauri-migration-plan.md, decision D1). main.ts installs it only when
-// `window.electronAPI` is absent, which is exactly the case under Tauri: the
-// Electron build keeps working through the preload bridge, unchanged.
-//
-// Event names are the channel names the preload used ('file-changed',
-// 'siblings-changed', …) so the mapping from one shell to the other stays 1:1.
-//
-// Stages, per docs/tauri-migration-plan.md: document IO, the watcher, the close
-// guard and the conflict flow are live (P2). Theme loading, system fonts, exports
-// and the menu surface are still logged stubs and arrive in P3 to P5; each one says
-// so once in the console rather than pretending to work.
+// The renderer talks to one object, whose shape is declared in platform-api.ts. This
+// file builds that object on top of the Tauri commands, so the editor, the panels and
+// the exports stay as they were.
 
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 import type {
-  ElectronAPI,
+  ColamdApi,
   FileOpenedData,
   FileManagerName,
   ImageExportPreset,
   ImageExportSnapshot,
   SiblingFile
-} from '../preload/index'
+} from './platform-api'
 
 /** Names already reported, so one stub does not fill the console. */
 const reported = new Set<string>()
@@ -72,8 +61,8 @@ function documentUrl(path: string | null): string | null {
   return path ? convertFileSrc(path) : null
 }
 
-export function createTauriApi(): ElectronAPI {
-  const api: ElectronAPI = {
+export function createTauriApi(): ColamdApi {
+  const api: ColamdApi = {
     // --- Opening and reading documents ------------------------------------
     openFile: async () => {
       const opened = await invoke<{ path: string | null; content: string } | null>('open_file')

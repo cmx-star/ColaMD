@@ -239,7 +239,7 @@ function installEditorInteractions(root: HTMLElement, view: EditorView): void {
     const href = linkHrefOf(e.target)
     if (href && !href.startsWith('#')) {
       e.preventDefault()
-      window.electronAPI.openExternal(href)
+      window.colamd.openExternal(href)
     }
   })
 

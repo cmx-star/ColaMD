@@ -45,7 +45,7 @@ export function applyTheme(name: string, customCSS?: string): void {
   localStorage.setItem('colamd-theme', name)
 
   // Tell the main process so the theme menu can show the selected state
-  window.electronAPI?.reportTheme?.(name)
+  window.colamd?.reportTheme?.(name)
 
   // …and hand it the resolved shell colours. Windows paints the window controls
   // inside our own row (titleBarOverlay), and that overlay has to be told a real
@@ -68,7 +68,7 @@ export function applyTheme(name: string, customCSS?: string): void {
     const iconEl = document.getElementById('file-toggle-btn') ?? document.body
     const icon = getComputedStyle(iconEl).color
     const surfaceHex = painted(surface, '#ffffff')
-    window.electronAPI?.reportTitlebarColors?.({ background: surfaceHex, symbol: painted(icon, surfaceHex) })
+    window.colamd?.reportTitlebarColors?.({ background: surfaceHex, symbol: painted(icon, surfaceHex) })
   }
 }
 

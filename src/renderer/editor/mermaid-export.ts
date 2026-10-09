@@ -6,7 +6,7 @@
 // in source mode (or on a block whose source is open for editing) there is no
 // SVG on screen at all, yet the export can still draw one.
 //
-// The Word pipeline is Markdown based (src/main/docx-export.ts parses the text
+// The Word pipeline is Markdown based (the docx export parses the text
 // and only understands images that point at a real file), so each diagram is
 // burned into a PNG here and the fence is rewritten into an image reference that
 // names it in `images`. A diagram that cannot be drawn keeps its code fence: an

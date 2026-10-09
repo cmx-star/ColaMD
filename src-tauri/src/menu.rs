@@ -417,9 +417,6 @@ fn build_inner(
     let theme = theme_submenu(app, current_theme)?;
 
     // --- Help ---------------------------------------------------------------
-    let cheatsheet = MenuItemBuilder::with_id("help-cheatsheet", t("Markdown 语法", "Markdown Syntax"))
-        .accelerator("CmdOrCtrl+Shift+/")
-        .build(app)?;
     let check_updates = MenuItemBuilder::with_id("help-check-updates", t("检查更新...", "Check for Updates..."))
         .enabled(false)
         .build(app)?;
@@ -429,7 +426,6 @@ fn build_inner(
         Some(AboutMetadataBuilder::new().name(Some("ColaMD")).version(Some(env!("CARGO_PKG_VERSION"))).build()),
     )?;
     let help = SubmenuBuilder::new(app, t("帮助", "Help"))
-        .item(&cheatsheet)
         .item(&check_updates)
         .separator()
         .item(&about)
@@ -511,7 +507,6 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         "view-file-panel" => emit("toggle-file-panel", None),
         "view-source-mode" => emit("toggle-source-mode", None),
         "view-font-settings" => emit("open-font-settings", None),
-        "help-cheatsheet" => crate::bundled::open_cheatsheet(app),
         other => {
             if let Some(theme) = other.strip_prefix("theme-custom:") {
                 crate::themes::apply_custom(app, theme);

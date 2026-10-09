@@ -54,13 +54,13 @@ export function persistEditorFont(prefs: EditorFontPrefs): void {
   localStorage.setItem(STORE_KEY, JSON.stringify(prefs))
   applyEditorFont(prefs)
   // Let other windows pick the change up too (they apply it idempotently).
-  window.electronAPI?.setEditorFont?.(prefs)
+  window.colamd?.setEditorFont?.(prefs)
 }
 
 export function clearEditorFont(): void {
   localStorage.removeItem(STORE_KEY)
   applyEditorFont(null)
-  window.electronAPI?.setEditorFont?.({ family: '', size: 0 })
+  window.colamd?.setEditorFont?.({ family: '', size: 0 })
 }
 
 export function showFontSettingsModal(): void {
@@ -105,7 +105,7 @@ export function showFontSettingsModal(): void {
   fontList.className = 'font-modal-list'
   fontList.style.display = 'none'
   let fontNames: string[] = []
-  void window.electronAPI.listSystemFonts?.().then((fonts) => {
+  void window.colamd.listSystemFonts?.().then((fonts) => {
     if (!fonts.length) return
     fontNames = fonts
     if (document.activeElement === familyInput) renderFontList(familyInput.value)
