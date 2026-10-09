@@ -6,10 +6,11 @@ import { enterPrintLayout, exitPrintLayout } from './slides-export'
 import { enterPaperLayout, exitPaperLayout } from './print-layout'
 import { SearchPanel } from './editor/search-panel'
 import { applyTheme, loadSavedTheme } from './themes/theme-manager'
+import { fileIconFor, folderIcon } from './themes/file-icons'
 import { setUiLanguage, isChinese, type UiLanguage } from './ui-language'
 import { applyEditorFont, loadSavedEditorFont, showFontSettingsModal } from './editor/font-settings'
 import { createTauriApi } from './tauri-api'
-import type { ColamdApi, FileManagerName, SiblingFile } from './platform-api'
+import type { LoomarkApi, FileManagerName, SiblingFile } from './platform-api'
 import { CHECKS } from './verify/checks'
 import './themes/base.css'
 import './themes/premium.css'
@@ -104,13 +105,13 @@ applyFilePanelWidth(clampFilePanelWidth(Number.parseInt(localStorage.getItem('fi
 // that answers the people who reach for the left (2026-09-20). The preference
 // lives here, beside the panel's width, and main is told about it only so the View
 // menu's checkmarks tell the truth.
-const PANEL_SIDE_KEY = 'colamd-panel-side'
+const PANEL_SIDE_KEY = 'loomark-panel-side'
 
 function applyPanelSide(side: string): void {
   const next = side === 'left' ? 'left' : 'right'
   document.body.classList.toggle('panel-left', next === 'left')
   localStorage.setItem(PANEL_SIDE_KEY, next)
-  window.colamd?.reportPanelSide?.(next)
+  window.loomark?.reportPanelSide?.(next)
 }
 
 applyPanelSide(localStorage.getItem(PANEL_SIDE_KEY) ?? 'right')
@@ -119,7 +120,7 @@ applyPanelSide(localStorage.getItem(PANEL_SIDE_KEY) ?? 'right')
 // preference is a body class rather than an inline style, so the same class
 // travels inside the export snapshot and an exported image keeps the column the
 // author was reading. `standard` needs no class: it is what body already carries.
-const PAGE_WIDTH_KEY = 'colamd-page-width'
+const PAGE_WIDTH_KEY = 'loomark-page-width'
 
 const PAGE_WIDTH_CLASSES: Record<string, string> = {
   narrow: 'page-width-narrow',
@@ -133,7 +134,7 @@ function applyPageWidth(width: string): void {
     if (className) document.body.classList.toggle(className, className === PAGE_WIDTH_CLASSES[next])
   }
   localStorage.setItem(PAGE_WIDTH_KEY, next)
-  window.colamd?.reportPageWidth?.(next)
+  window.loomark?.reportPageWidth?.(next)
 }
 
 applyPageWidth(localStorage.getItem(PAGE_WIDTH_KEY) ?? 'standard')
@@ -157,7 +158,7 @@ let documentRevision = 0
 let saveQueue: Promise<void> = Promise.resolve()
 
 function reportDirty(): void {
-  window.colamd.reportDirty(dirty)
+  window.loomark.reportDirty(dirty)
 }
 
 // --- Save status hint (#49) ---
@@ -206,7 +207,7 @@ function clearSaveStatus(): void {
 }
 
 // After the disk version is loaded, the dropped version still exists in
-// ~/.colamd/recovered. Saying so is the entire point of keeping it, so the hint
+// ~/.loomark/recovered. Saying so is the entire point of keeping it, so the hint
 // takes the save-status slot for a while and opens the folder when clicked.
 function showRecoveryHint(recoveryPath: string): void {
   const el = saveStatusEl()
@@ -221,7 +222,7 @@ function showRecoveryHint(recoveryPath: string): void {
   el.style.pointerEvents = 'auto'
   el.style.cursor = 'pointer'
   el.onclick = () => {
-    void window.colamd?.revealPath?.(recoveryPath)
+    void window.loomark?.revealPath?.(recoveryPath)
   }
   saveStatusTimer = setTimeout(() => clearSaveStatus(), 12000)
 }
@@ -246,7 +247,7 @@ function raiseExternalConflict(): void {
     el.classList.remove('saved')
     el.classList.add('pending')
   }
-  window.colamd.reportExternalConflict?.(getFileContent())
+  window.loomark.reportExternalConflict?.(getFileContent())
 }
 
 // --- Tabs (design.md) ---
@@ -481,7 +482,7 @@ function renderTabBar(): void {
   active?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   // Let the main process know which files this window holds in tabs, so opening
   // an already open document can focus that tab instead of duplicating it.
-  window.colamd.setTabFiles(tabs.map((tab) => tab.filePath).filter((path): path is string => !!path))
+  window.loomark.setTabFiles(tabs.map((tab) => tab.filePath).filter((path): path is string => !!path))
 }
 
 function showBlankDocument(): void {
@@ -565,7 +566,7 @@ async function openNewTab(): Promise<void> {
   applyDocumentFileUrl(null)
   // Tell the main process the window is now on an untitled document, otherwise
   // its notion of the active file still points at the previous tab's file.
-  await window.colamd.activateFile(null)
+  await window.loomark.activateFile(null)
   showBlankDocument()
   renderTabBar()
   // The new tab exists to be typed in, so the caret goes there without a click.
@@ -586,7 +587,7 @@ function applyDocumentFileUrl(url: string | null): void {
 
 /** 路径刚变过（另存为、自动保存落盘）时，问主进程要一次 URL。 */
 async function refreshDocumentFileUrl(): Promise<void> {
-  const url = currentFilePath ? await window.colamd.fileUrl(currentFilePath) : null
+  const url = currentFilePath ? await window.loomark.fileUrl(currentFilePath) : null
   applyDocumentFileUrl(url)
 }
 
@@ -604,7 +605,7 @@ async function activateTab(id: string): Promise<void> {
     // watcher, the title and the recent list, and reports whether the file
     // changed while this tab sat in the background. An untitled tab passes null
     // so the window stops pointing at the tab we are leaving.
-    const disk = await window.colamd.activateFile(target.filePath)
+    const disk = await window.loomark.activateFile(target.filePath)
     applyDocumentFileUrl(disk?.fileUrl ?? null)
     // This document may have been written in a different style than the one we
     // are leaving; its content comes back with it, and the style lives in the
@@ -675,7 +676,7 @@ async function closeTab(id: string): Promise<void> {
     // A background tab is not the active document, so it is written straight to
     // its own path; an untitled one cannot be written without a dialog.
     if (tab.filePath) {
-      const saved = await window.colamd.saveFile(tab.content, tab.filePath, false, false)
+      const saved = await window.loomark.saveFile(tab.content, tab.filePath, false, false)
       if (!saved) return
       tab.dirty = false
     } else if (!(await confirmDiscardUntitled())) {
@@ -691,7 +692,7 @@ async function closeTab(id: string): Promise<void> {
     // denied (the guard never does for a clean window), the fallback remains.
     activeTabId = null
     await openNewTab()
-    void window.colamd.closeWindow()
+    void window.loomark.closeWindow()
     return
   }
   if (tab.id === activeTabId) {
@@ -707,7 +708,7 @@ async function closeTab(id: string): Promise<void> {
 // anything. That silently discarded unsaved tabs (2026-10-09), which is the one
 // failure this app must never have.
 async function confirmDiscardUntitled(): Promise<boolean> {
-  return window.colamd.confirmDiscardTab(isChinese()
+  return window.loomark.confirmDiscardTab(isChinese()
     ? '这个标签页还没有保存，关闭会丢掉里面的内容。'
     : 'This tab has unsaved content. Close it anyway?')
 }
@@ -722,7 +723,7 @@ async function openFileInNewTab(path: string): Promise<void> {
   }
   const current = activeTab()
   if (current && !current.filePath && !current.dirty) {
-    await window.colamd.openSibling(path)
+    await window.loomark.openSibling(path)
     return
   }
   await openNewTab()
@@ -731,7 +732,7 @@ async function openFileInNewTab(path: string): Promise<void> {
   // for the next file, overwriting the one just opened (#99).
   const claimed = activeTab()
   if (claimed) claimed.filePath = path
-  await window.colamd.openSibling(path)
+  await window.loomark.openSibling(path)
 }
 
 // Closing several tabs runs one at a time: each close may need its own unsaved
@@ -746,7 +747,7 @@ async function closeTabsMatching(keep: (index: number) => boolean): Promise<void
   }
 }
 
-function bindTabBar(api: ColamdApi): void {
+function bindTabBar(api: LoomarkApi): void {
   // Tab-opens are serialized: each request awaits main (activateFile,
   // file-opened) before the next runs. Without this, a burst of queued opens
   // (multi-file launch, fast second-instance) interleaves and two documents
@@ -891,7 +892,7 @@ async function runAutosave(): Promise<void> {
   // rebuildMenu=false: autosave must never rebuild the app menu (macOS IME)
   // autosave=true: the main process may refuse the write when the file changed
   // on disk since our last read or write, and ask the user instead.
-  const path = await enqueueSave(() => window.colamd.saveFile(content, filePath, false, true))
+  const path = await enqueueSave(() => window.loomark.saveFile(content, filePath, false, true))
   if (path && revision === documentRevision && currentFilePath === filePath) {
     if (path !== filePath) void refreshDocumentFileUrl()
     currentFilePath = path
@@ -908,8 +909,8 @@ async function saveCurrent(saveAs = false): Promise<boolean> {
   // '' states plainly that the active document is untitled, so a save can never
   // be written into a file the window happens to have open in another tab.
   const path = await enqueueSave(() => saveAs
-    ? window.colamd.saveFileAs(content, expectedPath ?? '')
-    : window.colamd.saveFile(content, expectedPath ?? '', true))
+    ? window.loomark.saveFileAs(content, expectedPath ?? '')
+    : window.loomark.saveFile(content, expectedPath ?? '', true))
   if (!path || currentFilePath !== expectedPath) return false
 
   if (path !== expectedPath) void refreshDocumentFileUrl()
@@ -993,7 +994,7 @@ function updateSourceToggle(): void {
 function updateUiLanguage(): void {
   const zh = isChinese()
   document.documentElement.lang = zh ? 'zh-CN' : 'en'
-  document.title = 'ColaMD'
+  document.title = 'loomark'
   untitledName = zh ? '未命名' : 'Untitled'
   fileTabEl().textContent = zh ? '文件' : 'Files'
   outlineTabEl().textContent = zh ? '大纲' : 'Outline'
@@ -1359,7 +1360,7 @@ function panelRows(): PanelRow[] {
 function loadPanelDirectory(dir: string): void {
   if (panelLoading.has(dir)) return
   panelLoading.add(dir)
-  void window.colamd.listDirectory(dir).then((children) => {
+  void window.loomark.listDirectory(dir).then((children) => {
     panelLoading.delete(dir)
     if (!children) return
     panelChildren.set(dir, children)
@@ -1407,9 +1408,18 @@ function renderFileList(files: import('./platform-api').SiblingFile[]): void {
     const icon = document.createElement('span')
     icon.className = `file-entry-icon ${f.kind}`
     icon.setAttribute('aria-hidden', 'true')
-    icon.innerHTML = f.kind === 'directory'
-      ? '<svg viewBox="0 0 16 16"><path d="M2.5 4.5h4l1.5 1.5h6v6.5h-11.5z"/><path d="M2.5 4.5v-1h4l1.5 1.5"/></svg>'
-      : '<svg viewBox="0 0 16 16"><path d="M4 2.5h5l3 3v8H4z"/><path d="M9 2.5v3h3"/></svg>'
+    // Folders and Markdown files get the colour icons from Material Icon Theme; the
+    // rest keep the panel's own outlined file shape. "Back" is not a file and already
+    // carries its own arrow, so it gets no icon.
+    if (f.kind !== 'parent') {
+      if (f.kind === 'directory') {
+        icon.innerHTML = folderIcon()
+      } else {
+        const { svg, plain } = fileIconFor(f.name)
+        if (plain) icon.classList.add('plain')
+        icon.innerHTML = svg
+      }
+    }
     const label = document.createElement('span')
     label.className = 'file-entry-name'
     // Words, not two dots: the row has the space and ".." never said where it goes.
@@ -1443,7 +1453,7 @@ function renderFileList(files: import('./platform-api').SiblingFile[]): void {
 }
 
 async function refreshSiblings(): Promise<void> {
-  const files = await window.colamd.listSiblings()
+  const files = await window.loomark.listSiblings()
   if (files) renderFileList(files)
 }
 
@@ -1589,7 +1599,7 @@ async function exportCurrentHTML(): Promise<void> {
     })
   }
 
-  await withExportLayout(() => window.colamd.exportHTML(getExportSnapshot(content)))
+  await withExportLayout(() => window.loomark.exportHTML(getExportSnapshot(content)))
 
   if (wasSourceMode) {
     enterSourceMode(content, sourceScrollRatio)
@@ -1609,7 +1619,7 @@ async function exportCurrentImage(preset: 'desktop' | 'mobile'): Promise<void> {
     })
   }
 
-  await withExportLayout(() => window.colamd.exportImage(getExportSnapshot(content), preset))
+  await withExportLayout(() => window.loomark.exportImage(getExportSnapshot(content), preset))
 
   if (wasSourceMode) enterSourceMode(content, sourceScrollRatio)
 }
@@ -1618,7 +1628,7 @@ async function exportCurrentImage(preset: 'desktop' | 'mobile'): Promise<void> {
 // asks the window to become paper through this hook. The deck's rule holds here
 // too — pages come from the RENDERED document — so source mode is rendered
 // first, or the export would print whatever was on screen before it was typed.
-window.__colamdSlidesExport = {
+window.__loomarkSlidesExport = {
   enter: async () => {
     if (sourceModeActive) {
       const content = getContent()
@@ -1642,12 +1652,12 @@ window.__colamdSlidesExport = {
  * 导出要弹系统保存框，无头环境点不了，所以把「会被写进文件的那段 HTML」单独露出来：
  * 验收脚本（scripts/verify-features.mjs）拿它检查语义标签。只读，不改任何状态。
  */
-window.__colamdExportDocumentHTML = (): string => {
+window.__loomarkExportDocumentHTML = (): string => {
   const root = document.querySelector<HTMLElement>('#editor .cm-content')
   return root ? documentHTMLFrom(root) : ''
 }
 
-window.__colamdPrintExport = {
+window.__loomarkPrintExport = {
   enter: async () => {
     setCleanExport(true)
     await enterPaperLayout()
@@ -1682,11 +1692,11 @@ async function toggleSlideshow(): Promise<void> {
   const started = startSlideshow({
     onStart: () => {
       setEditorEditable(false)
-      void window.colamd.setSlideshowFullscreen(true)
+      void window.loomark.setSlideshowFullscreen(true)
     },
     onExit: () => {
       setEditorEditable(true)
-      void window.colamd.setSlideshowFullscreen(false)
+      void window.loomark.setSlideshowFullscreen(false)
       if (wasSourceMode) enterSourceMode(content, sourceScrollRatio)
     }
   })
@@ -1696,7 +1706,7 @@ async function toggleSlideshow(): Promise<void> {
 }
 
 async function init(): Promise<void> {
-  const api = window.colamd
+  const api = window.loomark
   // macOS keeps its own overlay scrollbars (drawn while you scroll, no layout
   // space, never in the way). The thin custom scrollbar is only for Windows and
   // Linux, where the platform default is a chunky always-on bar.
@@ -1715,9 +1725,9 @@ async function init(): Promise<void> {
   const savedTheme = loadSavedTheme()
   if (savedTheme.startsWith('custom:')) {
     // Load before applying: a newly opened window must not briefly paint the
-    // custom class without its stylesheet. Missing files self-heal to elegant.
+    // custom class without its stylesheet. Missing files self-heal to light.
     const css = await api.loadThemeCSS(savedTheme.slice(7))
-    applyTheme(css ? savedTheme : 'elegant', css ?? undefined)
+    applyTheme(css ? savedTheme : 'light', css ?? undefined)
   } else {
     applyTheme(savedTheme)
   }
@@ -1773,7 +1783,7 @@ async function init(): Promise<void> {
     // Report every tab that still has unsaved content. The main process writes
     // the ones with a path and refuses to close on the untitled ones, so a
     // background tab can never be dropped silently.
-    window.colamd.respondDocumentState(requestId, {
+    window.loomark.respondDocumentState(requestId, {
       dirty,
       content: getFileContent(),
       tabs: tabs.filter((tab) => tab.dirty).map((tab) => ({ path: tab.filePath, content: tab.content }))
@@ -2079,11 +2089,11 @@ async function init(): Promise<void> {
 
 // The shell hands the renderer one object with the shape in platform-api.ts, built
 // before anything reads it.
-if (!window.colamd) window.colamd = createTauriApi()
+if (!window.loomark) window.loomark = createTauriApi()
 
 // A packaged app has no console: without the IPC copy of this, a renderer that
 // dies during init leaves nothing behind but a white window (#126).
 init().catch((e) => {
-  console.error('ColaMD init failed:', e)
-  void window.colamd.logRendererError(e instanceof Error ? (e.stack ?? e.message) : String(e))
+  console.error('loomark init failed:', e)
+  void window.loomark.logRendererError(e instanceof Error ? (e.stack ?? e.message) : String(e))
 })

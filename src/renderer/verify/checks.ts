@@ -23,7 +23,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 /** 进度写进应用的日志通道（渲染层没有控制台可用），卡住时能看出卡在哪一步。 */
 function note(message: string): void {
-  void window.colamd?.logRendererError(`[verify] ${message}`)
+  void window.loomark?.logRendererError(`[verify] ${message}`)
 }
 
 function scroller(): HTMLElement | null {

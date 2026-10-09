@@ -77,7 +77,7 @@ enum ReaderFontSize: Int, CaseIterable, Identifiable {
 }
 
 enum ReaderDocumentType {
-    static let markdown = UTType(exportedAs: "ai.marswave.colamd.reader.markdown")
+    static let markdown = UTType(exportedAs: "ai.marswave.loomark.reader.markdown")
     static let importableTypes: [UTType] = [markdown, .plainText]
 }
 
@@ -94,9 +94,9 @@ final class ReaderStore: ObservableObject {
     }
 
     private enum Keys {
-        static let recents = "colamd.reader.recents"
-        static let theme = "colamd.reader.theme"
-        static let fontSize = "colamd.reader.font-size"
+        static let recents = "loomark.reader.recents"
+        static let theme = "loomark.reader.theme"
+        static let fontSize = "loomark.reader.font-size"
     }
 
     private let defaults: UserDefaults
@@ -202,7 +202,7 @@ final class ReaderStore: ObservableObject {
 
     private var documentsDirectory: URL {
         fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ColaMDReader", isDirectory: true)
+            .appendingPathComponent("loomarkReader", isDirectory: true)
     }
 
     private func persistRecents() {

@@ -1,4 +1,4 @@
-// Recent documents, in the same `~/.colamd/recent.json` the Electron build writes.
+// Recent documents, in the same `~/.loomark/recent.json` the Electron build writes.
 //
 // Ten entries, newest first, duplicates moved to the front, stale paths dropped when
 // the list is read. The store also carries `restoreOnLaunch`, which belongs to the

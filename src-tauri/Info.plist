@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Which languages this bundle claims to ship.
+
+	  Without this key macOS sees only CFBundleDevelopmentRegion (English) and
+	  concludes the app is English-only, so the WebView's own right-click menu
+	  (Look Up / Translate / Spelling and Grammar / AutoFill) comes up in English
+	  even on a Chinese system (2026-10-09). The in-app interface language is a
+	  ColaMD setting stored in language.json, which macOS never reads, so the
+	  system menu can only follow the system language, not that setting.
+
+	  The tags are the underscore form (`zh_CN`), not the BCP 47 form
+	  (`zh-Hans`): that is what CFBundleCopyLocalizationsForURL reports for the
+	  system apps, and what this key is matched against.
+	-->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh_CN</string>
+	</array>
+</dict>
+</plist>

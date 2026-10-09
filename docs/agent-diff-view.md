@@ -1,8 +1,8 @@
-# ColaMD — Agent Diff View
+# loomark — Agent Diff View
 
 ## 需求
 
-当 AI agent 修改了当前打开的 .md 文件，ColaMD 在实时刷新的同时，以视觉 diff 的���式展示变更内容。让用户一眼看出 agent 改了什么。
+当 AI agent 修改了当前打开的 .md 文件，loomark 在实时刷新的同时，以视觉 diff 的���式展示变更内容。让用户一眼看出 agent 改了什么。
 
 ## 设计
 

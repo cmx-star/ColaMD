@@ -1,14 +1,14 @@
-# ColaMD
+# loomark
 
 > A free, elegant Markdown editor anyone can pick up. No toolbars, no clutter, and the file on disk is always what you see.
 
 **Language / 语言: [English](README.md) · [中文](README_CN.md)** · [Website](https://colamd.com/)
 
-ColaMD is an open-source, free, elegant Markdown editor for writing, notes, and documentation. It is built for people who just want to write: no toolbars, no status bar, nothing to configure: just your text and a file list, with a tab strip only when you open a second document.
+loomark is an open-source, free, elegant Markdown editor for writing, notes, and documentation. It is built for people who just want to write: no toolbars, no status bar, nothing to configure: just your text and a file list, with a tab strip only when you open a second document.
 
 It offers true WYSIWYG editing, 12 built-in themes, rich-text copy, smart line breaks, search and replace, a document outline, PDF / HTML / Word export, and support for macOS, Windows, and Linux.
 
-Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or another editor), ColaMD shows the new content right away. No reopening, no manual refresh.
+Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or another editor), loomark shows the new content right away. No reopening, no manual refresh.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/release/marswaveai/colamd.svg)](https://github.com/marswaveai/colamd/releases)
@@ -20,8 +20,8 @@ Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or
 ## Screenshots
 
 <p align="center">
-  <img src="docs/images/tasks-en.png" alt="ColaMD showing an interactive task list" width="49%">
-  <img src="docs/images/rendering-en.png" alt="ColaMD rendering a table and inline code" width="49%">
+  <img src="docs/images/tasks-en.png" alt="loomark showing an interactive task list" width="49%">
+  <img src="docs/images/rendering-en.png" alt="loomark rendering a table and inline code" width="49%">
 </p>
 
 <p align="center"><em>Interactive task lists, and Markdown rendered as you type: headings, links, tables and inline code.</em></p>
@@ -31,7 +31,7 @@ Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or
 Twelve built-in themes, six light, six dark, inspired by Bear, Notion, iA Writer, Kindle, Solarized, Nord, Gruvbox, and Dracula. Every one of them is also a standalone CSS file in [`themes/`](themes/), with a guide to [writing your own](themes/README.md).
 
 <p align="center">
-  <img src="docs/images/theme-swatches.svg" alt="ColaMD themes" width="92%">
+  <img src="docs/images/theme-swatches.svg" alt="loomark themes" width="92%">
 </p>
 
 ## Features
@@ -56,13 +56,13 @@ Twelve built-in themes, six light, six dark, inspired by Bear, Notion, iA Writer
 - **PDF, HTML & Word Export**: Turn your Markdown document into a themed PDF, self-contained HTML, or editable Word document.
 - **Image Export**: Share Markdown as one continuous PNG at the desktop or mobile reading width; longer documents continue as numbered pages.
 - **Portable Image Paths**: Local images use safe `file://` URLs for display and return to relative paths when saved.
-- **VS Code Integration**: Open the current Markdown file in ColaMD directly from VS Code.
+- **VS Code Integration**: Open the current Markdown file in loomark directly from VS Code.
 - **Minimal by Design**: No toolbar, no permanent sidebar, no distractions.
 - **Cross-Platform**: Available for macOS, Windows, and Linux.
 
 ## Works with your Markdown workflow
 
-ColaMD does not ask you to change your habits. It works well alongside Obsidian, Typora, VS Code, and other Markdown apps, all sharing the same `.md` files, with each tool doing what it does best.
+loomark does not ask you to change your habits. It works well alongside Obsidian, Typora, VS Code, and other Markdown apps, all sharing the same `.md` files, with each tool doing what it does best.
 
 ## Download
 
@@ -76,7 +76,7 @@ ColaMD does not ask you to change your habits. It works well alongside Obsidian,
 
 ## Roadmap
 
-ColaMD will keep growing as a focused, free Markdown editor:
+loomark will keep growing as a focused, free Markdown editor:
 
 - v1.1: Live file reload, file associations, drag & drop, themes
 - v1.2: New icon
@@ -96,8 +96,9 @@ ColaMD will keep growing as a focused, free Markdown editor:
 - v2.0.1: Universal macOS build for Apple silicon and Intel Macs, plus custom-theme restoration, Mermaid render recovery, and Windows updater fixes
 - v2.0.2: Resizable file panel (180–420px, remembered) and an outline progress view that highlights the current heading and flashes the landing point after a jump
 - v2.3.0: Folders expand in place in the file list, one root and downward, so nested documents are one click away. Plus a round of shell tightening: the tab strip starts on the panel's edge line, resizing the panel lights up the divider itself, long names in the list appear as a hover label instead of scrolling past the icon, and the title-bar controls express state through weight instead of boxes
+- v2.8.0: The app is renamed loomark, after loom and mark: the documents are the threads, the editor weaves them. Name, menus, window titles, bundle name and icon all change, and the settings folder moves from `~/.colamd` to `~/.loomark` (the two do not share state, so preferences start from their defaults again). The file list gives folders and Markdown files colour icons from Material Icon Theme
 - v2.7.0: The editor core is rewritten around a single rule: the editor holds the file's bytes, and rendering is a layer drawn on top of them. Characters you never touched can no longer change on save (table delimiter rows and `*`, `$`, `_` used to come back rewritten), long documents export whole instead of one screenful, and images, links, footnotes, inline HTML, Mermaid diagrams, code highlighting, copy buttons and list continuation are all back on the new core
-- v2.6.0: Mermaid diagrams are drawn into exported Word documents (rendered light, because Word is a white page), the reading column has three widths in View → Text Width (640 / 780 / 1080, honoured by source mode and by the HTML and PDF exports), unsaved work is copied to `~/.colamd/recovered` before it is discarded, and the tab close button answers a 24×24 target while staying 16×16 on screen
+- v2.6.0: Mermaid diagrams are drawn into exported Word documents (rendered light, because Word is a white page), the reading column has three widths in View → Text Width (640 / 780 / 1080, honoured by source mode and by the HTML and PDF exports), unsaved work is copied to `~/.loomark/recovered` before it is discarded, and the tab close button answers a 24×24 target while staying 16×16 on screen
 - v2.5.0: The document becomes a slideshow (View → Play Slideshow, ⌘⇧P): one `---` per page, full screen, starting at your caret, with the theme's typography, tables, formulas and diagrams on every slide. The same deck exports as a 16:9 PDF. Empty lines you type are written as blank lines instead of `<br />` tags, and a mixed `---`/`***` document keeps the rule marker it mostly uses
 - v2.4.4: YAML frontmatter survives a save byte for byte (opening a note and saving it used to rewrite the block into invalid YAML and overwrite the file), CRLF files stay CRLF, wide tables stop losing their last column in PDF exports, the find panel clears the window controls in the top row, a document opened from outside the app lands in the window you are looking at, and the file list can sit on either side from the View menu
 - v2.4.3: The Windows window buttons finally follow the theme. The colour handed to the system was a CSS Color 4 value it cannot parse, so the whole update was rejected and the buttons kept the colours from window creation (a light strip over a black row)
@@ -122,4 +123,4 @@ ColaMD will keep growing as a focused, free Markdown editor:
 
 ---
 
-ColaMD is built by [Cola.app](https://cola.app) and maintained by [orange2ai](https://github.com/orange2ai). Issues, ideas and pull requests are welcome.
+loomark is built by [Cola.app](https://cola.app) and maintained by [orange2ai](https://github.com/orange2ai). Issues, ideas and pull requests are welcome.

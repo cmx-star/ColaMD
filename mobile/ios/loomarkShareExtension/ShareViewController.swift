@@ -2,7 +2,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
-    private let appGroupIdentifier = "group.ai.marswave.colamd.reader"
+    private let appGroupIdentifier = "group.ai.marswave.loomark.reader"
     private var hasStartedImport = false
 
     override func viewDidLoad() {
@@ -10,7 +10,7 @@ final class ShareViewController: UIViewController {
         view.backgroundColor = .systemBackground
 
         let label = UILabel()
-        label.text = "正在导入到 ColaMD"
+        label.text = "正在导入到 loomark"
         label.font = .preferredFont(forTextStyle: .headline)
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -105,7 +105,7 @@ private enum ShareError: LocalizedError {
         case .noMarkdownFile:
             "没有可导入的 Markdown 文件。"
         case .sharedContainerUnavailable:
-            "ColaMD 的共享存储不可用。"
+            "loomark 的共享存储不可用。"
         }
     }
 }

@@ -23,8 +23,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..')
-const WORK = join(homedir(), 'Library', 'Caches', `colamd-verify-scroll-${Date.now()}`)
-const BINARY = process.env.COLAMD_BINARY ?? join(APP, 'src-tauri', 'target', 'release', 'colamd')
+const WORK = join(homedir(), 'Library', 'Caches', `loomark-verify-scroll-${Date.now()}`)
+const BINARY = process.env.COLAMD_BINARY ?? join(APP, 'src-tauri', 'target', 'release', 'loomark')
 
 /** 文档要足够长，长到「打开时解析到的那一段」离尾部很远。 */
 const ROWS = 1200

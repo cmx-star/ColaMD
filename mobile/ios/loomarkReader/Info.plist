@@ -13,7 +13,7 @@
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>CFBundleDisplayName</key>
-    <string>ColaMD</string>
+    <string>loomark</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
@@ -37,7 +37,7 @@
             <string>Alternate</string>
             <key>LSItemContentTypes</key>
             <array>
-                <string>ai.marswave.colamd.reader.markdown</string>
+                <string>ai.marswave.loomark.reader.markdown</string>
                 <string>net.daringfireball.markdown</string>
             </array>
         </dict>
@@ -66,10 +66,10 @@
     <array>
         <dict>
             <key>CFBundleURLName</key>
-            <string>ai.marswave.colamd.reader</string>
+            <string>ai.marswave.loomark.reader</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>colamd-reader</string>
+                <string>loomark-reader</string>
             </array>
         </dict>
     </array>
@@ -89,7 +89,7 @@
             <key>UTTypeDescription</key>
             <string>Markdown Document</string>
             <key>UTTypeIdentifier</key>
-            <string>ai.marswave.colamd.reader.markdown</string>
+            <string>ai.marswave.loomark.reader.markdown</string>
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key>

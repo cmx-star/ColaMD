@@ -742,6 +742,14 @@ body.panel-resizing {
   display: block;
   width: 14px;
   height: 14px;
+}
+
+/* The folder and Markdown icons carry their own colour from Material Icon Theme, so
+   the rule above must not force `fill: none` or a stroke on them: that would hollow
+   them out. The plain file icon that everything else falls back to has no colour of
+   its own and is drawn as an outline instead, in the same muted ink as the rest of
+   the panel. */
+.file-entry-icon.plain svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.3;

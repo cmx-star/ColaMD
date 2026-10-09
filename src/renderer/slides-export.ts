@@ -40,7 +40,7 @@ let restoreScrollTop = 0
 declare global {
   interface Window {
     /** The main process asks the document to become paper through this. */
-    __colamdSlidesExport?: { enter: () => Promise<SlidesSheet | false>; exit: () => void }
+    __loomarkSlidesExport?: { enter: () => Promise<SlidesSheet | false>; exit: () => void }
   }
 }
 

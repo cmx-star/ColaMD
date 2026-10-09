@@ -1,6 +1,6 @@
 # Markdown 语法速查
 
-ColaMD 支持下面这些 Markdown 格式。每个示例下方是它的源码写法。
+loomark 支持下面这些 Markdown 格式。每个示例下方是它的源码写法。
 
 这份文档同时是功能演示：图片、链接、脚注、公式、HTML、图表都能在上面看到实际效果。
 
@@ -22,7 +22,7 @@ ColaMD 支持下面这些 Markdown 格式。每个示例下方是它的源码写
 
 ## 链接
 
-[ColaMD](https://github.com/marswaveai/ColaMD)
+[loomark](https://github.com/marswaveai/loomark)
 
 Cmd/⌘+点击链接会在浏览器中打开；`[跳到某一节](#标题)` 会跳到文内对应的标题。
 
@@ -30,7 +30,7 @@ Cmd/⌘+点击链接会在浏览器中打开；`[跳到某一节](#标题)` 会�
 
 ## 图片
 
-![这是一张示例图片](colamd-demo.png)
+![这是一张示例图片](loomark-demo.png)
 
 源码：`![描述](图片地址)`。本地相对路径和网络图片都支持，相对路径是相对这份文档所在的位置算的。
 
@@ -81,7 +81,7 @@ function hello(name) {
 
 | 名称 | 说明 |
 | --- | --- |
-| ColaMD | Agent Native Markdown 编辑器 |
+| loomark | Agent Native Markdown 编辑器 |
 
 源码：用 `|` 分隔列，第二行写 `---` 作为表头分隔线。
 
@@ -99,7 +99,7 @@ $$
 
 正文里写一个脚注标记[^1]，鼠标停在上面就会显示注释内容。
 
-[^1]: 脚注的内容写在这里，放文档哪个位置都行，ColaMD 会把它收进这一行。
+[^1]: 脚注的内容写在这里，放文档哪个位置都行，loomark 会把它收进这一行。
 
 源码：正文里写 `[^1]`，文档任意位置写 `[^1]: 脚注内容`。
 
@@ -116,7 +116,7 @@ $$
 ## 图表
 
 ```mermaid
-graph LR; A[写 Markdown] --> B[ColaMD 渲染] --> C[导出 PDF];
+graph LR; A[写 Markdown] --> B[loomark 渲染] --> C[导出 PDF];
 ```
 
 源码：用 ```` ```mermaid ```` 围起来的代码块。点击图表可以回去改源码。

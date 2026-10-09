@@ -8,8 +8,8 @@
 //
 // Off by default, and deliberately cheap when off: one environment lookup, cached.
 //
-// Lines go to stderr and to `~/.colamd/trace.log`. The file matters when the app is
-// started by the system rather than by a terminal (`open -a ColaMD`), where nothing
+// Lines go to stderr and to `~/.loomark/trace.log`. The file matters when the app is
+// started by the system rather than by a terminal (`open -a loomark`), where nothing
 // is attached to stderr; a test round then still has evidence to read afterwards.
 
 use std::io::Write;
@@ -31,7 +31,7 @@ fn enabled() -> bool {
 }
 
 fn log_path() -> std::path::PathBuf {
-    crate::paths::colamd_home().join("trace.log")
+    crate::paths::loomark_home().join("trace.log")
 }
 
 /// Report one decision when tracing is on. Arguments are formatted lazily.
@@ -39,7 +39,7 @@ pub fn trace(message: impl FnOnce() -> String) {
     if !enabled() {
         return;
     }
-    let line = format!("[colamd +{}ms] {}\n", started().elapsed().as_millis(), message());
+    let line = format!("[loomark +{}ms] {}\n", started().elapsed().as_millis(), message());
     eprint!("{line}");
 
     let path = log_path();

@@ -69,7 +69,7 @@ pub async fn export_html(window: tauri::WebviewWindow, snapshot: HtmlSnapshot) -
     };
 
     let document = format!(
-        "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>{title}</title>\n  <style>{styles}\n    html, body {{ height: auto; overflow: visible; }}\n    body {{ min-width: 320px; }}\n    #titlebar, #file-panel, #source-editor {{ display: none !important; }}\n    #editor {{ height: auto !important; min-height: 100vh; overflow: visible !important; padding: 0 !important; }}\n  </style>\n</head>\n<body class=\"{body_class}\">\n  <article class=\"colamd-document\">{rendered}</article>\n</body>\n</html>\n",
+        "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>{title}</title>\n  <style>{styles}\n    html, body {{ height: auto; overflow: visible; }}\n    body {{ min-width: 320px; }}\n    #titlebar, #file-panel, #source-editor {{ display: none !important; }}\n    #editor {{ height: auto !important; min-height: 100vh; overflow: visible !important; padding: 0 !important; }}\n  </style>\n</head>\n<body class=\"{body_class}\">\n  <article class=\"loomark-document\">{rendered}</article>\n</body>\n</html>\n",
         title = escape_html(&base_name),
         styles = snapshot.styles,
         body_class = escape_html(&snapshot.body_class),

@@ -45,7 +45,7 @@
 ## 3. 迁移策略：三层结构
 
 ```
-ColaMD.app
+loomark.app
 ├── Rust 主进程（src-tauri/）        文件 IO、watcher、菜单、更新、原生桥接
 ├── WebView 前端资产                 src/renderer 原样（6724 行 TS + 2385 行 CSS）
 └── 适配层 src/renderer/tauri-api.ts 与 ElectronAPI 同形状，底层换 @tauri-apps/api
@@ -92,14 +92,14 @@ ColaMD.app
 - 搭 src-tauri 骨架：vite 打 renderer（`vite.tauri.config.ts`），frontendDist 指向 `dist-tauri/renderer`。与 Electron 的 `dist/renderer` 分开，两套壳在迁移期可以各自构建互不覆盖
 - 窗口按 design.md（标题栏拖拽区、Overlay 标题栏、chrome 行高）
 - 验收：Tauri 窗口跑起现有界面，与现版截图一致；先量一次产物体积作对照
-- 实测（2026-10-09）：release 打包 `ColaMD.app` 6.4 MiB（对照 Electron 未压缩 215 MB、arm64 zip 85.3 MB），真机窗口渲染与编辑正常
+- 实测（2026-10-09）：release 打包 `loomark.app` 6.4 MiB（对照 Electron 未压缩 215 MB、arm64 zip 85.3 MB），真机窗口渲染与编辑正常
 
 ### P2 文件 IO 地基（3 天）
 
 - Rust commands：openFile / openFilePath / activateFile / listSiblings / listDirectory / revealFile / saveFile / saveFileAs / getFileManagerName
 - 保存语义照搬现有实现：**普通写入，不是临时文件加 rename**（原先这里写错了）。Electron 版本就是普通 writeFile，而「原子保存」指的是**检测**外部写入者用 rename 替换文件：所以 watcher 盯父目录，而不是绑在文件的 inode 上
 - mtime 冲突检测、watcher（100ms 防抖、300ms 抑制 FSEvents 历史、自愈、rename 检测、兄弟文件 300ms 刷新、比对内容跳过自写回声）、recovered 副本逻辑
-- 验收：外部改写 1 秒内刷新；`save(open(x)) === x`；冲突路径与现版一致（先问用户，副本落 `~/.colamd/recovered`，写不成功不丢弃）
+- 验收：外部改写 1 秒内刷新；`save(open(x)) === x`；冲突路径与现版一致（先问用户，副本落 `~/.loomark/recovered`，写不成功不丢弃）
 
 **进度（2026-10-09）**：文件 IO、watcher、关闭保护、冲突流程、最近文件、菜单、主题、系统字体、HTML 导出已完成；`cargo test` 26 项通过。手工验收走完第一轮（T1 到 T13 的核心项全过，含热更新、字节保真、冲突保护与恢复副本），过程中修掉 7 个单元测试覆盖不到的缺陷，清单与证据见 [tauri-test-plan.md](tauri-test-plan.md) 第四节。尚未移植：导出 PDF / 图片 / Word、自动更新、右键菜单、窗口状态记忆。
 

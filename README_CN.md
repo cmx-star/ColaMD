@@ -6,11 +6,11 @@
 
 **Language / 语言:** **[English](README.md)** **·** **[中文](README_CN.md)** · [官网](https://colamd.com/)
 
-ColaMD 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、记录和文档。它为「只想好好写字」的人而做：没有工具栏、没有状态栏、不需要任何配置；你的文字和文件列表就是全部，标签栏只在你开第二个文档时才出现。
+loomark 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、记录和文档。它为「只想好好写字」的人而做：没有工具栏、没有状态栏、不需要任何配置；你的文字和文件列表就是全部，标签栏只在你开第二个文档时才出现。
 
 它支持所见即所得、12 个内置主题、富文本复制、智能换行、查找替换、文档大纲、PDF / HTML / Word 导出，并支持 macOS、Windows 和 Linux。
 
-无论是什么在写这个文件（Claude Code、Codex 这类 AI Agent，一个脚本，或另一个编辑器），ColaMD 都会立刻显示最新内容，不用重开文件，也不用手动刷新。
+无论是什么在写这个文件（Claude Code、Codex 这类 AI Agent，一个脚本，或另一个编辑器），loomark 都会立刻显示最新内容，不用重开文件，也不用手动刷新。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/release/marswaveai/colamd.svg)](https://github.com/marswaveai/colamd/releases)
@@ -22,8 +22,8 @@ ColaMD 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、
 ## 截图
 
 <p align="center">
-  <img src="docs/images/tasks-zh.png" alt="ColaMD 打开的待办列表演示文档" width="49%">
-  <img src="docs/images/rendering-zh.png" alt="ColaMD 渲染的表格与行内代码" width="49%">
+  <img src="docs/images/tasks-zh.png" alt="loomark 打开的待办列表演示文档" width="49%">
+  <img src="docs/images/rendering-zh.png" alt="loomark 渲染的表格与行内代码" width="49%">
 </p>
 
 <p align="center"><em>交互式待办列表，以及边写边渲染的标题、链接、表格与行内代码。</em></p>
@@ -33,7 +33,7 @@ ColaMD 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、
 12 个内置主题，6 浅 6 深，灵感来自 Bear、Notion、iA Writer、Kindle、Solarized、Nord、Gruvbox 和 Dracula。每一个主题都是一份独立的 CSS 文件，放在 [`themes/`](themes/)，附带[自己写主题的说明](themes/README.md)。
 
 <p align="center">
-  <img src="docs/images/theme-swatches.svg" alt="ColaMD 主题" width="92%">
+  <img src="docs/images/theme-swatches.svg" alt="loomark 主题" width="92%">
 </p>
 
 ## 功能
@@ -78,7 +78,7 @@ ColaMD 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、
 
 * **图片路径可移植保存**: 本地图片显示使用安全的 `file://` URL，保存时恢复为相对路径。
 
-* **VS Code 集成**: 在 VS Code 中将当前 Markdown 文件直接打开到 ColaMD。
+* **VS Code 集成**: 在 VS Code 中将当前 Markdown 文件直接打开到 loomark。
 
 * **极简设计**: 没有工具栏，没有永久侧边栏，专注于内容本身。
 
@@ -86,7 +86,7 @@ ColaMD 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、
 
 ## 与现有 Markdown 工作流配合
 
-ColaMD 不要求你改变现有习惯，也适合与 Obsidian、Typora、VS Code 等 Markdown 软件配合使用。它们共享同一套 `.md` 文件，你可以用不同工具完成不同任务。
+loomark 不要求你改变现有习惯，也适合与 Obsidian、Typora、VS Code 等 Markdown 软件配合使用。它们共享同一套 `.md` 文件，你可以用不同工具完成不同任务。
 
 ## 下载
 
@@ -100,7 +100,7 @@ ColaMD 不要求你改变现有习惯，也适合与 Obsidian、Typora、VS Code
 
 ## 路线图
 
-ColaMD 会继续把「免费、优雅、专注」这件事做好：
+loomark 会继续把「免费、优雅、专注」这件事做好：
 
 * v1.1: 实时文件热更新、文件关联、拖拽打开、主题系统
 
@@ -137,8 +137,9 @@ ColaMD 会继续把「免费、优雅、专注」这件事做好：
 * v2.0.2: 文件面板可调宽（180–420px，记住选择），大纲新增阅读进度高亮与跳转落点闪烁反馈
 
 * v2.3.0：文件面板里的文件夹可以就地展开，一个树根向下看，嵌套的文档只差一次点击；同时把外壳收紧一圈，标签从面板的边界线开始，拖拽调宽亮起的是分割线本身，长文件名改由浮层说全名，标题栏按钮用深浅表达状态
+* v2.8.0：应用更名为 loomark，取自 loom（织机和织造）与 mark（Markdown 的标记）：文档是一根根线，编辑器把它们织起来。应用名、菜单、窗口标题、安装包名和图标一起换新，设置目录从 `~/.colamd` 搬到 `~/.loomark`（两边不互通，界面设置会回到默认值）。文件列表里的文件夹和 Markdown 文件改用 Material Icon Theme 的彩色图标
 * v2.7.0：编辑器内核重写，只认一条规则：编辑器里存的是文件的字节，渲染只是叠在字节上面的一层。你没碰过的字符保存后不会再变（表格分隔行和 `*`、`$`、`_` 以前会被改写），长文档导出整篇而不是一屏，图片、链接、脚注、行内 HTML、Mermaid 图表、代码高亮与复制按钮、列表续行也都在新内核上补齐
-* v2.6.0：导出的 Word 里带上 Mermaid 图（按浅色画，因为 Word 是白纸），正文宽度多了三档（视图 → 正文宽度：640 / 780 / 1080，源码模式和 HTML、PDF 导出都跟着走），丢弃未保存内容之前先往 `~/.colamd/recovered` 留一份副本，标签关闭按钮可点的范围扩到 24×24（可见的还是 16×16）
+* v2.6.0：导出的 Word 里带上 Mermaid 图（按浅色画，因为 Word 是白纸），正文宽度多了三档（视图 → 正文宽度：640 / 780 / 1080，源码模式和 HTML、PDF 导出都跟着走），丢弃未保存内容之前先往 `~/.loomark/recovered` 留一份副本，标签关闭按钮可点的范围扩到 24×24（可见的还是 16×16）
 * v2.5.0：文档变成幻灯片（视图 → 放映幻灯片，⌘⇧P）：一条 `---` 一页，全屏放映，从光标所在页开始，主题的字体、表格、公式和图表每一页都在；同一套分页还能导出成 16:9 的幻灯片 PDF。编辑时按出的空行存成 Markdown 本来的空行而不是 `<br />` 标签，`---` 与 `***` 混用的文件保存时保留多数派写法
 * v2.4.4：带 YAML frontmatter 的笔记保存后不再被改写（以前打开后直接保存就会把属性区重排成非法 YAML 并覆盖原文件），CRLF 的文件保存后还是 CRLF，导出 PDF 时宽表格不再丢掉最后一列，查找替换框不再被右上角的窗口按钮压住，从 Finder 打开的文件会落进你正在看的窗口，文件列表可以在视图菜单里换到左侧
 * v2.4.3：Windows 窗口按钮的颜色真正跟着主题——交给系统的颜色原本是它解析不了的写法，整次设置被拒，按钮一直停在开窗那一刻的颜色上（近黑的顶行上顶着一块浅灰）
@@ -172,4 +173,4 @@ ColaMD 会继续把「免费、优雅、专注」这件事做好：
 
 ***
 
-ColaMD 由 [Cola.app](https://cola.app) 开发，作者 [orange2ai](https://github.com/orange2ai)。欢迎提交 Issue、想法和 Pull Request。
+loomark 由 [Cola.app](https://cola.app) 开发，作者 [orange2ai](https://github.com/orange2ai)。欢迎提交 Issue、想法和 Pull Request。

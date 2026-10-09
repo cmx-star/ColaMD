@@ -26,53 +26,45 @@ const EMBED = new URLSearchParams(location.search).has('embed')
 // the system overlay ones look heavy inside a window.
 document.body.classList.add('web-playground')
 
-// id, 中文名, English name. Same twelve themes as the desktop app.
+// id, 中文名, English name. Same four themes as the desktop app's Theme menu.
 const THEMES: Array<[string, string, string]> = [
   ['light', '浅色', 'Light'],
-  ['elegant', '雅致', 'Elegant'],
-  ['notion', '简白', 'Notion'],
-  ['writer', '作家', 'Writer'],
-  ['bear', '熊红', 'Bear'],
   ['sepia', '羊皮纸', 'Sepia'],
-  ['dark', '深色', 'Dark'],
-  ['midnight', '午夜', 'Midnight'],
   ['solarized-dark', '夜航', 'Solarized Dark'],
-  ['nord', '极地', 'Nord'],
-  ['gruvbox', '暖木', 'Gruvbox'],
-  ['dracula', '德古拉', 'Dracula']
+  ['nord', '极地', 'Nord']
 ]
 
 const COPY = {
   zh: {
-    docTitle: 'ColaMD 主题体验',
+    docTitle: 'loomark 主题体验',
     subtitle: '主题体验',
     hint: '这是真的编辑器，直接改这里的字试试。',
     maximize: '全屏',
     restore: '退出全屏',
-    note: '这是网页预览：写的字不会保存，也不会联网。真正的 ColaMD 把文件放在你自己的电脑上。',
+    note: '这是网页预览：写的字不会保存，也不会联网。真正的 loomark 把文件放在你自己的电脑上。',
     cta: '下载桌面版',
     toggle: 'EN'
   },
   en: {
-    docTitle: 'ColaMD themes in the browser',
+    docTitle: 'loomark themes in the browser',
     subtitle: 'themes, in the browser',
     hint: 'This is the real editor. Type in it.',
     maximize: 'Full screen',
     restore: 'Exit full screen',
-    note: 'This is a web preview: nothing is saved and nothing leaves the page. The real ColaMD keeps your files on your own computer.',
+    note: 'This is a web preview: nothing is saved and nothing leaves the page. The real loomark keeps your files on your own computer.',
     cta: 'Download for desktop',
     toggle: '中文'
   }
 } as const
 
-const THEME_KEY = 'colamd-try-theme'
-const LANG_KEY = 'colamd-try-lang'
+const THEME_KEY = 'loomark-try-theme'
+const LANG_KEY = 'loomark-try-lang'
 
 // Message types. The child asks, the parent decides; the parent then tells the
 // child what happened, so both sides can never end up disagreeing.
-const ASK_FULLSCREEN = 'colamd-try:ask-fullscreen'
-const SET_FULLSCREEN = 'colamd-try:set-fullscreen'
-const SET_LANG = 'colamd-try:set-lang'
+const ASK_FULLSCREEN = 'loomark-try:ask-fullscreen'
+const SET_FULLSCREEN = 'loomark-try:set-fullscreen'
+const SET_LANG = 'loomark-try:set-lang'
 
 function initialLang(): Lang {
   const saved = localStorage.getItem(LANG_KEY)
@@ -185,7 +177,7 @@ async function boot(): Promise<void> {
   setMarkdown(SAMPLES[lang], true)
   if (EMBED) {
     // Tell the homepage we are here and ready for language updates.
-    window.parent.postMessage({ type: 'colamd-try:ready' }, location.origin)
+    window.parent.postMessage({ type: 'loomark-try:ready' }, location.origin)
   } else {
     document.querySelector<HTMLElement>('#editor .cm-content')?.focus()
   }

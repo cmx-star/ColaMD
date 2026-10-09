@@ -97,7 +97,7 @@ struct WebReaderView: UIViewRepresentable {
         func renderIfReady() {
             guard isReady, let pendingPayload else { return }
             self.pendingPayload = nil
-            webView?.evaluateJavaScript("window.ColaMDReader.render(\(pendingPayload));")
+            webView?.evaluateJavaScript("window.loomarkReader.render(\(pendingPayload));")
         }
 
         @objc func scrollToHeading(_ notification: Notification) {
@@ -106,7 +106,7 @@ struct WebReaderView: UIViewRepresentable {
                   let json = String(data: jsonData, encoding: .utf8) else {
                 return
             }
-            webView?.evaluateJavaScript("window.ColaMDReader.scrollToHeading(\(json));")
+            webView?.evaluateJavaScript("window.loomarkReader.scrollToHeading(\(json));")
         }
     }
 }

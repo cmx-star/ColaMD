@@ -164,7 +164,7 @@ export function runFormatCommand(id: FormatCommandId): void {
 let handle: EditorHandle | null = null
 
 function defaultContent(): string {
-  return isChinese() ? '# **欢迎使用 ColaMD**\n\n开始写作...\n' : '# **Welcome to ColaMD**\n\nStart typing here...\n'
+  return isChinese() ? '# **欢迎使用 loomark**\n\n开始写作...\n' : '# **Welcome to loomark**\n\nStart typing here...\n'
 }
 
 export async function createEditor(
@@ -239,7 +239,7 @@ function installEditorInteractions(root: HTMLElement, view: EditorView): void {
     const href = linkHrefOf(e.target)
     if (href && !href.startsWith('#')) {
       e.preventDefault()
-      window.colamd.openExternal(href)
+      window.loomark.openExternal(href)
     }
   })
 

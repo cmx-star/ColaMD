@@ -5,19 +5,19 @@ const { spawn } = require('child_process')
 const vscode = require('vscode')
 
 /**
- * Open the current Markdown document in ColaMD.
+ * Open the current Markdown document in loomark.
  *
- * ColaMD watches files on disk, not editor buffers — so unsaved changes must
- * be written to disk first, otherwise ColaMD would show stale content.
+ * loomark watches files on disk, not editor buffers — so unsaved changes must
+ * be written to disk first, otherwise loomark would show stale content.
  *
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
   context.subscriptions.push(
-    vscode.commands.registerCommand('colamd.openCurrentMarkdown', async () => {
+    vscode.commands.registerCommand('loomark.openCurrentMarkdown', async () => {
       const editor = vscode.window.activeTextEditor
       if (!editor) {
-        vscode.window.showErrorMessage('ColaMD: no active text editor.')
+        vscode.window.showErrorMessage('loomark: no active text editor.')
         return
       }
 
@@ -25,52 +25,52 @@ function activate(context) {
 
       if (document.languageId !== 'markdown') {
         vscode.window.showErrorMessage(
-          `ColaMD: this command only works in Markdown editors (current language: "${document.languageId}").`
+          `loomark: this command only works in Markdown editors (current language: "${document.languageId}").`
         )
         return
       }
 
       if (document.uri.scheme !== 'file') {
         vscode.window.showErrorMessage(
-          `ColaMD: can only open files on disk, not "${document.uri.scheme}" documents. Save the file first.`
+          `loomark: can only open files on disk, not "${document.uri.scheme}" documents. Save the file first.`
         )
         return
       }
 
-      // 1. Unsaved content must be on disk before ColaMD can see it.
+      // 1. Unsaved content must be on disk before loomark can see it.
       if (document.isDirty) {
         const saved = await document.save()
         if (!saved) {
-          vscode.window.showErrorMessage('ColaMD: failed to save the document, file not opened.')
+          vscode.window.showErrorMessage('loomark: failed to save the document, file not opened.')
           return
         }
       }
 
-      // 2. Launch ColaMD with the saved file.
+      // 2. Launch loomark with the saved file.
       const filePath = document.uri.fsPath
-      const error = await launchColaMD(filePath)
+      const error = await launchloomark(filePath)
       if (error) {
-        vscode.window.showErrorMessage(`ColaMD: could not open "${filePath}": ${error}`)
+        vscode.window.showErrorMessage(`loomark: could not open "${filePath}": ${error}`)
       }
     })
   )
 }
 
 /**
- * Launch ColaMD with the given file.
+ * Launch loomark with the given file.
  *
- * Platform defaults (unless `colamd.executablePath` is configured):
- *  - macOS:   `open -a ColaMD <file>`  (ColaMD.app resolved via LaunchServices)
- *  - Linux:   `colamd <file>`          (`colamd` must be on PATH)
- *  - Windows: `ColaMD.exe <file>`      (`ColaMD.exe` must be on PATH)
+ * Platform defaults (unless `loomark.executablePath` is configured):
+ *  - macOS:   `open -a loomark <file>`  (loomark.app resolved via LaunchServices)
+ *  - Linux:   `loomark <file>`          (`loomark` must be on PATH)
+ *  - Windows: `loomark.exe <file>`      (`loomark.exe` must be on PATH)
  *
  * @param {string} filePath
  * @returns {Promise<string | null>} Error message on failure, null on success.
  */
-function launchColaMD(filePath) {
+function launchloomark(filePath) {
   return new Promise((resolve) => {
     const platform = process.platform
-    const configured = vscode.workspace.getConfiguration('colamd').get('executablePath', '')
+    const configured = vscode.workspace.getConfiguration('loomark').get('executablePath', '')
 
     let command
     let args
@@ -79,12 +79,12 @@ function launchColaMD(filePath) {
       args = [filePath]
     } else if (platform === 'darwin') {
       command = 'open'
-      args = ['-a', 'ColaMD', filePath]
+      args = ['-a', 'loomark', filePath]
     } else if (platform === 'win32') {
-      command = 'ColaMD.exe'
+      command = 'loomark.exe'
       args = [filePath]
     } else {
-      command = 'colamd'
+      command = 'loomark'
       args = [filePath]
     }
 

@@ -1,6 +1,6 @@
 # Markdown Syntax Reference
 
-ColaMD supports the Markdown syntax you use every day, plus highlights, task lists, and formulas.
+loomark supports the Markdown syntax you use every day, plus highlights, task lists, and formulas.
 
 This document doubles as a demo: images, links, footnotes, formulas, HTML, and diagrams are all live below.
 
@@ -22,7 +22,7 @@ Source: `**bold**`, `*italic*`, `~~strikethrough~~`, and `==highlight==`.
 
 ## Links
 
-[ColaMD](https://github.com/marswaveai/ColaMD)
+[loomark](https://github.com/marswaveai/loomark)
 
 Hold Cmd / Ctrl while clicking a link to open it in your browser. `[Jump](#headings)` moves to a heading in the document.
 
@@ -30,7 +30,7 @@ Source: `[label](https://example.com)`
 
 ## Images
 
-![A sample image](colamd-demo.png)
+![A sample image](loomark-demo.png)
 
 Source: `![alt text](image-path)`. Local relative paths and web images both work; a relative path is resolved against the folder this document lives in.
 
@@ -79,7 +79,7 @@ Source: add `>` at the beginning of a quote. Put `---` on a line by itself for a
 
 | Name | Description |
 | --- | --- |
-| ColaMD | Agent Native Markdown editor |
+| loomark | Agent Native Markdown editor |
 
 Source: separate columns with `|` and use `---` in the second row.
 
@@ -97,7 +97,7 @@ Source: wrap inline formulas in a pair of `$`, and put a block formula on its ow
 
 Write a footnote marker[^1] and hover it to read the note.
 
-[^1]: The note itself goes here. It can live anywhere in the document; ColaMD folds it into this line.
+[^1]: The note itself goes here. It can live anywhere in the document; loomark folds it into this line.
 
 Source: `[^1]` in the text, and `[^1]: the note` somewhere in the document.
 
@@ -114,7 +114,7 @@ Source: write the tags directly. For safety, `script`, `iframe`, and `on*` handl
 ## Diagrams
 
 ```mermaid
-graph LR; A[Write Markdown] --> B[ColaMD renders it] --> C[Export a PDF];
+graph LR; A[Write Markdown] --> B[loomark renders it] --> C[Export a PDF];
 ```
 
 Source: a fenced code block with the `mermaid` language. Click a diagram to edit its source again.

@@ -49,7 +49,7 @@ struct ReaderHomeView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("ColaMD")
+                            Text("loomark")
                                 .font(.largeTitle.weight(.bold))
                                 .foregroundStyle(ReaderPalette.ink)
                             Capsule()
@@ -342,5 +342,5 @@ private struct OutlineSheet: View {
 }
 
 extension Notification.Name {
-    static let readerScrollToHeading = Notification.Name("colamd.reader.scroll-to-heading")
+    static let readerScrollToHeading = Notification.Name("loomark.reader.scroll-to-heading")
 }

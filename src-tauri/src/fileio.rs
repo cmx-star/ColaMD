@@ -179,7 +179,7 @@ mod tests {
     use std::io::Write;
 
     fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("colamd-test-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("loomark-test-{tag}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("create temp dir");
         dir

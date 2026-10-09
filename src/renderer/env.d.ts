@@ -4,8 +4,8 @@ declare module 'katex/dist/katex.min.css?inline' {
 }
 
 interface Window {
-  colamd: import('./platform-api').ColamdApi
+  loomark: import('./platform-api').LoomarkApi
   /** 主进程在 printToPDF 前后叫它，把光标与当前行的源码从纸上拿掉。 */
-  __colamdPrintExport?: { enter: () => void; exit: () => void }
-  __colamdExportDocumentHTML?: () => string
+  __loomarkPrintExport?: { enter: () => void; exit: () => void }
+  __loomarkExportDocumentHTML?: () => string
 }

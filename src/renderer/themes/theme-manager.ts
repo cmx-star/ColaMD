@@ -1,16 +1,11 @@
+// The four built-ins the menu offers, kept in step with BUILT_IN_THEMES in
+// src-tauri/src/menu.rs. The other stylesheets stay in the repo, but a theme the
+// menu cannot reach is not a theme the app applies.
 const themes: Record<string, string> = {
   light: 'theme-light',
-  dark: 'theme-dark',
-  elegant: 'theme-elegant',
   sepia: 'theme-sepia',
-  notion: 'theme-notion',
-  bear: 'theme-bear',
-  writer: 'theme-writer',
   'solarized-dark': 'theme-solarized-dark',
-  nord: 'theme-nord',
-  gruvbox: 'theme-gruvbox',
-  dracula: 'theme-dracula',
-  midnight: 'theme-midnight'
+  nord: 'theme-nord'
 }
 
 let customStyleEl: HTMLStyleElement | null = null
@@ -42,10 +37,10 @@ export function applyTheme(name: string, customCSS?: string): void {
   applyCodePalette()
 
   // Persist theme choice
-  localStorage.setItem('colamd-theme', name)
+  localStorage.setItem('loomark-theme', name)
 
   // Tell the main process so the theme menu can show the selected state
-  window.colamd?.reportTheme?.(name)
+  window.loomark?.reportTheme?.(name)
 
   // …and hand it the resolved shell colours. Windows paints the window controls
   // inside our own row (titleBarOverlay), and that overlay has to be told a real
@@ -68,7 +63,7 @@ export function applyTheme(name: string, customCSS?: string): void {
     const iconEl = document.getElementById('file-toggle-btn') ?? document.body
     const icon = getComputedStyle(iconEl).color
     const surfaceHex = painted(surface, '#ffffff')
-    window.colamd?.reportTitlebarColors?.({ background: surfaceHex, symbol: painted(icon, surfaceHex) })
+    window.loomark?.reportTitlebarColors?.({ background: surfaceHex, symbol: painted(icon, surfaceHex) })
   }
 }
 
@@ -127,10 +122,12 @@ function isDarkSurface(color: string): boolean {
 }
 
 export function loadSavedTheme(): string {
-  const saved = localStorage.getItem('colamd-theme')
-  if (!saved) return 'elegant'
+  const saved = localStorage.getItem('loomark-theme')
+  if (!saved) return 'light'
   // Custom themes are stored as "custom:<file>.css". Preserve the name so a
   // newly opened window can reload its stylesheet instead of falling back.
+  // A theme saved before the menu was trimmed no longer resolves here, and the
+  // fallback has to be one the menu still offers, or the window comes up unstyled.
   if (themes[saved] || saved.startsWith('custom:')) return saved
-  return 'elegant'
+  return 'light'
 }

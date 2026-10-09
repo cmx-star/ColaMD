@@ -1,4 +1,4 @@
-// ColaMD's Tauri shell.
+// loomark's Tauri shell.
 //
 // The renderer is the same code the Electron build ran (src/renderer), reached
 // through one adapter that presents the `ElectronAPI` shape on top of these
@@ -12,6 +12,8 @@
 
 mod commands;
 mod conflict;
+mod contextmenu;
+mod contextmenu_actions;
 mod export;
 mod fileio;
 mod fonts;
@@ -24,6 +26,7 @@ mod state;
 mod themes;
 mod trace;
 mod watcher;
+mod windowstate;
 mod windows;
 
 use std::path::PathBuf;
@@ -88,6 +91,17 @@ impl MenuState {
         value
     }
 
+    /// Adopt a zoom factor restored from the window-state file, so the next save
+    /// writes back what the user had rather than the default.
+    pub fn set_zoom(&self, label: &str, factor: f64) {
+        self.zoom.lock().expect("zoom").insert(label.to_string(), factor);
+    }
+
+    /// The zoom this window is at, for the window-state file.
+    pub fn current_zoom(&self, label: &str) -> f64 {
+        *self.zoom.lock().expect("zoom").get(label).unwrap_or(&1.0)
+    }
+
     pub fn reset_zoom(&self, label: &str) -> f64 {
         self.zoom.lock().expect("zoom").insert(label.to_string(), 1.0);
         1.0
@@ -112,7 +126,7 @@ impl MenuState {
 }
 
 /// A document handed to the app before the renderer could listen: a launch argument
-/// (file association, `colamd note.md`) or a second launch. Held until the renderer
+/// (file association, `loomark note.md`) or a second launch. Held until the renderer
 /// says it is ready, which is the same handshake the Electron build used.
 #[derive(Default)]
 pub struct StartupFiles {
@@ -159,7 +173,8 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        // A second launch (double-clicking a file, `open -a ColaMD note.md`) hands
+        .plugin(tauri_plugin_clipboard_manager::init())
+        // A second launch (double-clicking a file, `open -a loomark note.md`) hands
         // its files to the window that is already running instead of starting a
         // second copy of the app.
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
@@ -180,6 +195,7 @@ fn main() {
         .manage(commands::AppCtx::default())
         .manage(StartupFiles::default())
         .manage(ReadyWindows::default())
+        .manage(windowstate::Saver::default())
         .manage(MenuState::default())
         .invoke_handler(tauri::generate_handler![
             commands::open_file,
@@ -196,6 +212,8 @@ fn main() {
             commands::reveal_path,
             commands::report_dirty,
             commands::verify_report,
+            commands::show_entry_context_menu,
+            commands::show_tab_context_menu,
             commands::confirm_discard_tab,
             commands::renderer_ready,
             commands::log_renderer_error,
@@ -219,11 +237,25 @@ fn main() {
                 app.state::<StartupFiles>().push(path);
             }
             menu::build(app.handle());
+            // The main window is created here rather than declared in the config, so it
+            // can be born at the size and position it had last time. Applying those
+            // afterwards would re-lay-out the title bar and move the traffic lights.
+            if let Some(created) = windows::create_main_window(app.handle()) {
+                if let Some(zoom) = created.zoom {
+                    windowstate::apply_zoom(&created.window, zoom);
+                    app.state::<MenuState>().set_zoom(created.window.label(), zoom);
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
             if let WindowEvent::Focused(true) = event {
                 window.app_handle().state::<MenuState>().remember_focus(window.label());
+            }
+            if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_)) {
+                let app = window.app_handle();
+                let zoom = app.state::<MenuState>().current_zoom(window.label());
+                app.state::<windowstate::Saver>().schedule(window, zoom);
             }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 // Never let the window go before the close guard has run: it is what
@@ -232,13 +264,17 @@ fn main() {
                 let window = window.clone();
                 tauri::async_runtime::spawn(async move {
                     if commands::confirm_close(&window).await {
+                        // Remember where this window was before it goes.
+                        let app = window.app_handle();
+                        let zoom = app.state::<MenuState>().current_zoom(window.label());
+                        app.state::<windowstate::Saver>().save_now(&window, zoom);
                         let _ = window.destroy();
                     }
                 });
             }
         })
         .build(tauri::generate_context!())
-        .expect("error while building ColaMD")
+        .expect("error while building loomark")
         .run(|app, event| handle_run_event(app, event));
 }
 

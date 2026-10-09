@@ -84,7 +84,7 @@ export async function markdownForWord(markdown: string, chinese: boolean): Promi
   let index = 0
   for (const fence of fences) {
     index += 1
-    const name = `colamd-diagram-${index}.png`
+    const name = `loomark-diagram-${index}.png`
     const png = await diagramPNG(fence.code).catch(() => null)
     pieces.push(markdown.slice(cursor, fence.start))
     if (png) {

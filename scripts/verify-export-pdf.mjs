@@ -14,7 +14,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const APP = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
-const WORK = join(homedir(), 'Library', 'Caches', `colamd-verify-pdf-${Date.now()}`)
+const WORK = join(homedir(), 'Library', 'Caches', `loomark-verify-pdf-${Date.now()}`)
 
 /** 三百行正文：屏幕上一屏只装得下二十来行，所以「只有视口」和「整篇」的页数差得很远。 */
 const ROWS = 300

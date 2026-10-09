@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ColaMDReaderApp: App {
+struct loomarkReaderApp: App {
     @StateObject private var store = ReaderStore()
 
     var body: some Scene {

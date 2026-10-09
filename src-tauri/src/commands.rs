@@ -175,8 +175,8 @@ fn update_window_title(window: &WebviewWindow, path: &Path) {
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_else(|| "ColaMD".to_string());
-    let _ = window.set_title(&format!("{name} — ColaMD"));
+        .unwrap_or_else(|| "loomark".to_string());
+    let _ = window.set_title(&format!("{name} — loomark"));
 }
 
 #[tauri::command]
@@ -219,7 +219,7 @@ pub async fn activate_file(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>,
         state.last_internal_save_content = None;
         state.last_known_mtime = 0;
         drop(state);
-        let _ = window.set_title("ColaMD");
+        let _ = window.set_title("loomark");
         return Ok(None);
     };
 
@@ -577,6 +577,28 @@ pub async fn confirm_discard_tab(window: WebviewWindow, message: String) -> Resu
 /// offers that, so the shell reads the check *name* from COLAMD_VERIFY, hands it to
 /// the renderer (the checks are bundled there; a page cannot eval, its CSP forbids it),
 /// and writes the renderer's answer to COLAMD_VERIFY_OUT.
+/// Right-click on a file panel entry.
+#[tauri::command]
+pub async fn show_entry_context_menu(window: WebviewWindow, path: String, kind: String) -> Result<(), String> {
+    let app = window.app_handle().clone();
+    crate::contextmenu::show_entry(&app, &window, &path, &kind).map_err(|error| error.to_string())
+}
+
+/// Right-click on a tab.
+#[tauri::command]
+pub async fn show_tab_context_menu(window: WebviewWindow, payload: serde_json::Value) -> Result<(), String> {
+    let app = window.app_handle().clone();
+    let tab_id = payload.get("tabId").and_then(|value| value.as_str()).unwrap_or_default();
+    if tab_id.is_empty() {
+        return Ok(());
+    }
+    let file_path = payload.get("filePath").and_then(|value| value.as_str());
+    let can_close_others = payload.get("canCloseOthers").and_then(|value| value.as_bool()).unwrap_or(false);
+    let can_close_right = payload.get("canCloseRight").and_then(|value| value.as_bool()).unwrap_or(false);
+    crate::contextmenu::show_tab(&app, &window, tab_id, file_path, can_close_others, can_close_right)
+        .map_err(|error| error.to_string())
+}
+
 #[tauri::command]
 pub async fn verify_report(payload: String) -> Result<(), String> {
     let path = std::env::var("COLAMD_VERIFY_OUT").map_err(|_| "COLAMD_VERIFY_OUT is not set".to_string())?;

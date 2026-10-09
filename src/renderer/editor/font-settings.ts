@@ -9,7 +9,7 @@ export interface EditorFontPrefs {
   size: number
 }
 
-const STORE_KEY = 'colamd-editor-font'
+const STORE_KEY = 'loomark-editor-font'
 
 function isZh(): boolean {
   return isChinese()
@@ -54,13 +54,13 @@ export function persistEditorFont(prefs: EditorFontPrefs): void {
   localStorage.setItem(STORE_KEY, JSON.stringify(prefs))
   applyEditorFont(prefs)
   // Let other windows pick the change up too (they apply it idempotently).
-  window.colamd?.setEditorFont?.(prefs)
+  window.loomark?.setEditorFont?.(prefs)
 }
 
 export function clearEditorFont(): void {
   localStorage.removeItem(STORE_KEY)
   applyEditorFont(null)
-  window.colamd?.setEditorFont?.({ family: '', size: 0 })
+  window.loomark?.setEditorFont?.({ family: '', size: 0 })
 }
 
 export function showFontSettingsModal(): void {
@@ -105,7 +105,7 @@ export function showFontSettingsModal(): void {
   fontList.className = 'font-modal-list'
   fontList.style.display = 'none'
   let fontNames: string[] = []
-  void window.colamd.listSystemFonts?.().then((fonts) => {
+  void window.loomark.listSystemFonts?.().then((fonts) => {
     if (!fonts.length) return
     fontNames = fonts
     if (document.activeElement === familyInput) renderFontList(familyInput.value)

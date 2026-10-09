@@ -18,7 +18,7 @@ export type ImageExportPreset = 'desktop' | 'mobile'
 export type ImageExportSnapshot = { html: string; styles: string; bodyClass: string; background: string }
 export type FileManagerName = 'finder' | 'explorer' | 'file-manager'
 
-export interface ColamdApi {
+export interface LoomarkApi {
   openFile: () => Promise<{ path: string; content: string } | null>
   openFilePath: (path: string) => Promise<{ path: string; content: string } | null>
   getFileManagerName: () => Promise<FileManagerName>

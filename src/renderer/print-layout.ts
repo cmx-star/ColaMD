@@ -17,7 +17,7 @@
 
 import { getEditorScroller, getEditorView } from './editor/editor'
 
-const STYLE_ID = 'colamd-paper-layout'
+const STYLE_ID = 'loomark-paper-layout'
 /** 纸上的标记类。与 `exporting` 分开：那个管「藏起光标与属性区」，这个管「摊平」。 */
 const PAPER_CLASS = 'paper'
 /** 等 CodeMirror 补渲染的上限。实测 4800 行不到一秒，这里留足余量。 */

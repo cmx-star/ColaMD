@@ -65,5 +65,5 @@
     }
   }
 
-  window.ColaMDReader = { render, scrollToHeading };
+  window.loomarkReader = { render, scrollToHeading };
 })();

@@ -16,7 +16,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const APP = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
-const WORK = join(homedir(), 'Library', 'Caches', `colamd-verify-features-${Date.now()}`)
+const WORK = join(homedir(), 'Library', 'Caches', `loomark-verify-features-${Date.now()}`)
 
 /** 1×1 透明 PNG，用来验证本地图片能不能画出来。 */
 const PIXEL_PNG = Buffer.from(
@@ -228,8 +228,8 @@ const MEASURE = `(() => {
     },
     html: { rendered: q('#editor .raw-html').length, raw: has(lineOf('HTML 块'), '<div') },
     exportHtml: (() => {
-      const out = typeof window.__colamdExportDocumentHTML === 'function'
-        ? window.__colamdExportDocumentHTML()
+      const out = typeof window.__loomarkExportDocumentHTML === 'function'
+        ? window.__loomarkExportDocumentHTML()
         : ''
       return {
         size: out.length,

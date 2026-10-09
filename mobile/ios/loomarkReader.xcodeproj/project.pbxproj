@@ -6,7 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A10000000000000000000001 /* ColaMDReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* ColaMDReaderApp.swift */; };
+		A10000000000000000000001 /* loomarkReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* loomarkReaderApp.swift */; };
 		A10000000000000000000002 /* ReaderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ReaderStore.swift */; };
 		A10000000000000000000003 /* ReaderHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* ReaderHomeView.swift */; };
 		A10000000000000000000004 /* WebReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* WebReaderView.swift */; };
@@ -20,7 +20,7 @@
 
 
 /* Begin PBXFileReference section */
-		A20000000000000000000001 /* ColaMDReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColaMDReaderApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000001 /* loomarkReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = loomarkReaderApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* ReaderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStore.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* ReaderHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderHomeView.swift; sourceTree = "<group>"; };
 		A20000000000000000000004 /* WebReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebReaderView.swift; sourceTree = "<group>"; };
@@ -31,7 +31,7 @@
 		A20000000000000000000009 /* reader.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = reader.js; sourceTree = "<group>"; };
 		A2000000000000000000000A /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = marked.min.js; sourceTree = "<group>"; };
 		A2000000000000000000000B /* purify.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = purify.min.js; sourceTree = "<group>"; };
-		A2000000000000000000000C /* ColaMD Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ColaMD Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000000000000000000000C /* loomark Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "loomark Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,15 +47,15 @@
 		A40000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				A40000000000000000000002 /* ColaMDReader */,
+				A40000000000000000000002 /* loomarkReader */,
 				A40000000000000000000004 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A40000000000000000000002 /* ColaMDReader */ = {
+		A40000000000000000000002 /* loomarkReader */ = {
 			isa = PBXGroup;
 			children = (
-				A20000000000000000000001 /* ColaMDReaderApp.swift */,
+				A20000000000000000000001 /* loomarkReaderApp.swift */,
 				A20000000000000000000002 /* ReaderStore.swift */,
 				A20000000000000000000003 /* ReaderHomeView.swift */,
 				A20000000000000000000004 /* WebReaderView.swift */,
@@ -63,7 +63,7 @@
 				A20000000000000000000006 /* Assets.xcassets */,
 				A40000000000000000000003 /* ReaderWeb */,
 			);
-			path = ColaMDReader;
+			path = loomarkReader;
 			sourceTree = "<group>";
 		};
 		A40000000000000000000003 /* ReaderWeb */ = {
@@ -81,7 +81,7 @@
 		A40000000000000000000004 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A2000000000000000000000C /* ColaMD Reader.app */,
+				A2000000000000000000000C /* loomark Reader.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,9 +89,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A50000000000000000000001 /* ColaMDReader */ = {
+		A50000000000000000000001 /* loomarkReader */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A60000000000000000000002 /* Build configuration list for PBXNativeTarget "ColaMDReader" */;
+			buildConfigurationList = A60000000000000000000002 /* Build configuration list for PBXNativeTarget "loomarkReader" */;
 			buildPhases = (
 				A30000000000000000000002 /* Sources */,
 				A30000000000000000000001 /* Frameworks */,
@@ -99,9 +99,9 @@
 			);
 			buildRules = ();
 			dependencies = ();
-			name = ColaMDReader;
-			productName = ColaMDReader;
-			productReference = A2000000000000000000000C /* ColaMD Reader.app */;
+			name = loomarkReader;
+			productName = loomarkReader;
+			productReference = A2000000000000000000000C /* loomark Reader.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -119,7 +119,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A60000000000000000000001 /* Build configuration list for PBXProject "ColaMDReader" */;
+			buildConfigurationList = A60000000000000000000001 /* Build configuration list for PBXProject "loomarkReader" */;
 			compatibilityVersion = "Xcode 16.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -129,7 +129,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A50000000000000000000001 /* ColaMDReader */,
+				A50000000000000000000001 /* loomarkReader */,
 			);
 		};
 /* End PBXProject section */
@@ -155,7 +155,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000000000000000000001 /* ColaMDReaderApp.swift in Sources */,
+				A10000000000000000000001 /* loomarkReaderApp.swift in Sources */,
 				A10000000000000000000002 /* ReaderStore.swift in Sources */,
 				A10000000000000000000003 /* ReaderHomeView.swift in Sources */,
 				A10000000000000000000004 /* WebReaderView.swift in Sources */,
@@ -191,11 +191,11 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CJSWWQ2B9V;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = ColaMDReader/Info.plist;
+				INFOPLIST_FILE = loomarkReader/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ai.marswave.colamd.reader;
-				PRODUCT_NAME = "ColaMD Reader";
+				PRODUCT_BUNDLE_IDENTIFIER = ai.marswave.loomark.reader;
+				PRODUCT_NAME = "loomark Reader";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -210,11 +210,11 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CJSWWQ2B9V;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = ColaMDReader/Info.plist;
+				INFOPLIST_FILE = loomarkReader/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ai.marswave.colamd.reader;
-				PRODUCT_NAME = "ColaMD Reader";
+				PRODUCT_BUNDLE_IDENTIFIER = ai.marswave.loomark.reader;
+				PRODUCT_NAME = "loomark Reader";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -224,13 +224,13 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A60000000000000000000001 /* Build configuration list for PBXProject "ColaMDReader" */ = {
+		A60000000000000000000001 /* Build configuration list for PBXProject "loomarkReader" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (A80000000000000000000001 /* Debug */, A80000000000000000000002 /* Release */);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A60000000000000000000002 /* Build configuration list for PBXNativeTarget "ColaMDReader" */ = {
+		A60000000000000000000002 /* Build configuration list for PBXNativeTarget "loomarkReader" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (A80000000000000000000003 /* Debug */, A80000000000000000000004 /* Release */);
 			defaultConfigurationIsVisible = 0;

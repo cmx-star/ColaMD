@@ -13,7 +13,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const APP = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
-const WORK = join(homedir(), 'Library', 'Caches', `colamd-verify-export-${Date.now()}`)
+const WORK = join(homedir(), 'Library', 'Caches', `loomark-verify-export-${Date.now()}`)
 
 // 短的应导出成一张连续长图，长的应退回编号页；两个阅读宽度走的是同一套逻辑
 const CASES = [

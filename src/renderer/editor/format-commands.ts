@@ -158,7 +158,7 @@ export function runFormatCommand(view: EditorView, id: FormatCommandId): void {
         return
       }
     }
-    void window.colamd.readClipboardText().then((text) => {
+    void window.loomark.readClipboardText().then((text) => {
       const url = text.trim()
       if (!/^https?:\/\/\S+$/i.test(url)) return
       wrapLink(view, url)

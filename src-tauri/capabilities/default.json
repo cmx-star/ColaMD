@@ -12,6 +12,7 @@
     "core:webview:allow-internal-toggle-devtools",
     "dialog:default",
     "opener:default",
+    "clipboard-manager:allow-write-text",
     "opener:allow-reveal-item-in-dir"
   ]
 }

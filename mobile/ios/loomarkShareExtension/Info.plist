@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>ColaMD</string>
+    <string>loomark</string>
     <key>CFBundleName</key>
-    <string>ColaMD</string>
+    <string>loomark</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>

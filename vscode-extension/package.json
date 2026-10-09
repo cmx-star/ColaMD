@@ -1,13 +1,13 @@
 {
-  "name": "colamd-open-in-colamd",
-  "displayName": "ColaMD: Open in ColaMD",
-  "description": "Open the current Markdown file in ColaMD. Unsaved changes are saved to disk first so ColaMD's file watcher can see them.",
+  "name": "loomark-open-in-loomark",
+  "displayName": "loomark: Open in loomark",
+  "description": "Open the current Markdown file in loomark. Unsaved changes are saved to disk first so loomark's file watcher can see them.",
   "version": "0.1.0",
-  "publisher": "colamd",
+  "publisher": "loomark",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/marswaveai/ColaMD.git",
+    "url": "https://github.com/marswaveai/loomark.git",
     "directory": "vscode-extension"
   },
   "files": [
@@ -23,43 +23,43 @@
     "Other"
   ],
   "keywords": [
-    "colamd",
+    "loomark",
     "markdown",
     "editor"
   ],
   "activationEvents": [
-    "onCommand:colamd.openCurrentMarkdown"
+    "onCommand:loomark.openCurrentMarkdown"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "colamd.openCurrentMarkdown",
-        "title": "ColaMD: Open Current Markdown in ColaMD"
+        "command": "loomark.openCurrentMarkdown",
+        "title": "loomark: Open Current Markdown in loomark"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "colamd.openCurrentMarkdown",
+          "command": "loomark.openCurrentMarkdown",
           "when": "editorLangId == markdown"
         }
       ],
       "editor/context": [
         {
-          "command": "colamd.openCurrentMarkdown",
+          "command": "loomark.openCurrentMarkdown",
           "when": "editorLangId == markdown",
           "group": "navigation@1"
         }
       ]
     },
     "configuration": {
-      "title": "ColaMD",
+      "title": "loomark",
       "properties": {
-        "colamd.executablePath": {
+        "loomark.executablePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Optional path or name of the ColaMD executable. When empty, the platform default is used: macOS `open -a ColaMD <file>`, Linux `colamd <file>`, Windows `ColaMD.exe <file>`. Set this to a full path when ColaMD is not on PATH, e.g. `C:\\Program Files\\ColaMD\\ColaMD.exe`."
+          "markdownDescription": "Optional path or name of the loomark executable. When empty, the platform default is used: macOS `open -a loomark <file>`, Linux `loomark <file>`, Windows `loomark.exe <file>`. Set this to a full path when loomark is not on PATH, e.g. `C:\\Program Files\\loomark\\loomark.exe`."
         }
       }
     }

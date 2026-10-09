@@ -9,7 +9,7 @@
 **方式 A：一条命令（最省事）**
 
 ```bash
-cd /Users/cmx/Downloads/ColaMD-main
+cd /Users/cmx/Downloads/loomark-main
 export PATH="$HOME/.cargo/bin:$PATH"
 npm run tauri dev
 ```
@@ -20,31 +20,31 @@ npm run tauri dev
 
 ```bash
 # 终端 1：渲染层 dev server，保持运行
-cd /Users/cmx/Downloads/ColaMD-main
+cd /Users/cmx/Downloads/loomark-main
 npm run dev:tauri:renderer
 
 # 终端 2：带追踪启动，可跟一个文件路径
-cd /Users/cmx/Downloads/ColaMD-main
+cd /Users/cmx/Downloads/loomark-main
 export PATH="$HOME/.cargo/bin:$PATH"
-COLAMD_TRACE=1 ./src-tauri/target/debug/colamd /path/to/note.md
+COLAMD_TRACE=1 ./src-tauri/target/debug/loomark /path/to/note.md
 ```
 
 **打包版**（验证内嵌资源路径，和 dev 是两条不同路径）：
 
 ```bash
 npm run tauri build -- --bundles app
-open src-tauri/target/release/bundle/macos/ColaMD.app
+open src-tauri/target/release/bundle/macos/loomark.app
 ```
 
-**取证抓手**：`COLAMD_TRACE=1` 时，每个关键决策会往 stderr 打一行 `[colamd] ...`。截图加这几行日志，我就能判断是界面问题还是逻辑问题。日志样例：
+**取证抓手**：`COLAMD_TRACE=1` 时，每个关键决策会往 stderr 打一行 `[loomark] ...`。截图加这几行日志，我就能判断是界面问题还是逻辑问题。日志样例：
 
 ```
-[colamd] menu built (theme=, lang=en)
-[colamd] renderer ready (fullscreen=false)
-[colamd] watching /Users/you/Downloads/colamd-test/note.md
-[colamd] opened /Users/you/Downloads/colamd-test/note.md (634 bytes)
-[colamd] menu built (theme=elegant, lang=en)
-[colamd] watcher: /Users/you/Downloads/colamd-test/note.md changed on disk, handing it to the renderer
+[loomark] menu built (theme=, lang=en)
+[loomark] renderer ready (fullscreen=false)
+[loomark] watching /Users/you/Downloads/loomark-test/note.md
+[loomark] opened /Users/you/Downloads/loomark-test/note.md (634 bytes)
+[loomark] menu built (theme=elegant, lang=en)
+[loomark] watcher: /Users/you/Downloads/loomark-test/note.md changed on disk, handing it to the renderer
 ```
 
 界面语言默认跟随系统；系统不是中文时菜单是英文，这是和 Electron 版一致的行为。
@@ -52,15 +52,15 @@ open src-tauri/target/release/bundle/macos/ColaMD.app
 **测试文件放哪**：不要放 `/tmp`。macOS 的文件对话框到不了那里（`/tmp` 是 `/private/tmp` 的软链接，还带隐藏属性），用 ⌘O 根本选不到，只能靠启动参数或拖拽。把测试文件放在正常目录里，比如：
 
 ```bash
-mkdir -p ~/Downloads/colamd-test
-f=~/Downloads/colamd-test/note.md
+mkdir -p ~/Downloads/loomark-test
+f=~/Downloads/loomark-test/note.md
 ```
 
 本文档后面统一用 `$f` 代表「你在窗口里打开的那个文件」，命令里请换成实际路径。
 
 ## 二、测试清单
 
-按优先级排：前五项过了，迁移的地基就算立住了。每项都写了期望结果，**截图时请把对应的 `[colamd]` 日志一起截进来**。
+按优先级排：前五项过了，迁移的地基就算立住了。每项都写了期望结果，**截图时请把对应的 `[loomark]` 日志一起截进来**。
 
 ### T1 核心｜外部改写热更新
 
@@ -123,11 +123,11 @@ tail -3 "$f"
 
 ```bash
 f=/path/to/note.md
-log=/tmp/colamd-run2.log          # 换成本次启动时重定向的那个日志路径
+log=/tmp/loomark-run2.log          # 换成本次启动时重定向的那个日志路径
 before=$(shasum -a 256 "$f" | awk '{print $1}')
 count_before=$(grep -c "saved $f" "$log")
 echo "指纹已记录：$before"
-echo "现在切到 ColaMD，确认窗口里活动文档就是 $f，不要改动任何字，按 ⌘S，然后回这里按回车"
+echo "现在切到 loomark，确认窗口里活动文档就是 $f，不要改动任何字，按 ⌘S，然后回这里按回车"
 read -r _
 count_after=$(grep -c "saved $f" "$log")
 after=$(shasum -a 256 "$f" | awk '{print $1}')
@@ -204,7 +204,7 @@ printf '\n别人写的内容\n' >> /path/to/note.md
 | 期望 | 弹警告对话框，两个按钮：保留我的版本 / 加载磁盘上的版本 |
 | 选「保留我的」 | 编辑器内容不变，可以继续编辑 |
 | 选「加载磁盘」 | 先写出恢复副本再加载；标题栏提示副本位置，点击能定位到文件 |
-| 恢复副本 | `ls -lt ~/.colamd/recovered/` 里能看到 `<文档名>-<时间戳>.md` |
+| 恢复副本 | `ls -lt ~/.loomark/recovered/` 里能看到 `<文档名>-<时间戳>.md` |
 
 **关键**：如果恢复副本写不成功，**不允许**丢弃编辑器内容（会退回「保留我的版本」）。
 
@@ -272,8 +272,8 @@ macOS 上渲染引擎从 Chromium 换成了 WKWebView，输入法组合行为是
 准备一个约 1MB 的 markdown（放在正常目录，`/tmp` 选不到）：
 
 ```bash
-python3 -c "print('# 大文件\n\n' + '这是用来测大文件打开的段落。' * 50000)" > ~/Downloads/colamd-test/big.md
-ls -la ~/Downloads/colamd-test/big.md
+python3 -c "print('# 大文件\n\n' + '这是用来测大文件打开的段落。' * 50000)" > ~/Downloads/loomark-test/big.md
+ls -la ~/Downloads/loomark-test/big.md
 ```
 
 
@@ -323,12 +323,12 @@ ls -la ~/Downloads/colamd-test/big.md
 | T3.2 字节保真 | 含 `3 * 4`、`$5`、`snake_case`、表格分隔行的文档，保存前后 sha256 一致；且日志确认保存确实发生 |
 | T4 另存为 | `save dialog chose <路径>` → `saved <路径> (N bytes)`；新窗口内同样可用 |
 | T5 关闭保护 | 关标签：`asked: discard an unsaved tab?`，点取消后无 `watching` 行（标签留住了）；关窗口：`close guard: unsaved changes, asking` |
-| T6 冲突 | 脏文档撞上外部改写 → `renderer reports a conflict (N bytes of local work)`；选保留则内容无损；选加载则先写 `~/.colamd/recovered/note-<时间戳>.md`，副本大小与报告值一致 |
+| T6 冲突 | 脏文档撞上外部改写 → `renderer reports a conflict (N bytes of local work)`；选保留则内容无损；选加载则先写 `~/.loomark/recovered/note-<时间戳>.md`，副本大小与报告值一致 |
 | T7 中文输入法 | 在 T6 中持续输入整段中文，字符正确无丢失；输入期间自动保存正常；含中文的文档字节保真通过 |
 | T8 文件面板 | 点面板中的文件替换当前标签的文档，选中项跟随当前文档 |
 | T9 主题与字体 | 主题切换后 `menu built (theme=X)`；字体对话框列出系统字体（修复后 286 个族） |
 | T11 大文件 | 1.3MB / 约 1.8 万行文档正常打开与渲染，Rust 侧读取约 1ms |
-| T12 导出 HTML | 产出独立 HTML（`<!doctype html>` + 内联样式 + `<article class="colamd-document">`），标题取自文档标题 |
+| T12 导出 HTML | 产出独立 HTML（`<!doctype html>` + 内联样式 + `<article class="loomark-document">`），标题取自文档标题 |
 | T13 多窗口 | 新窗口可拖动、快捷键可用、各窗口保存各自的文件，`opened window doc-N` |
 
 ### 这一轮修掉的缺陷
@@ -359,7 +359,7 @@ ls -la ~/Downloads/colamd-test/big.md
 ```
 T5 关闭保护
 现象：<你看到的>
-日志：[colamd] ...（有就贴）
+日志：[loomark] ...（有就贴）
 截图：<附上>
 ```
 

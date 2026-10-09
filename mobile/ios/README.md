@@ -1,6 +1,6 @@
-# ColaMD Reader MVP
+# loomark Reader MVP
 
-`ColaMD Reader` is an iOS-only, offline Markdown reader. It imports `.md` files into its app container, renders them locally, and keeps a bounded list of recently opened documents.
+`loomark Reader` is an iOS-only, offline Markdown reader. It imports `.md` files into its app container, renders them locally, and keeps a bounded list of recently opened documents.
 
 ## Current scope
 
@@ -11,11 +11,11 @@
 
 ## Development
 
-Open `ColaMDReader.xcodeproj` in Xcode 26 or build the simulator target:
+Open `loomarkReader.xcodeproj` in Xcode 26 or build the simulator target:
 
 ```bash
-xcodebuild -project mobile/ios/ColaMDReader.xcodeproj \
-  -scheme ColaMDReader \
+xcodebuild -project mobile/ios/loomarkReader.xcodeproj \
+  -scheme loomarkReader \
   -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
@@ -33,4 +33,4 @@ Markdown files are copied into the app container on import. Remote and data-URI 
 
 ## Share-sheet boundary
 
-The app registers Markdown document types for Files app opening. A future WeChat Share Extension can copy an incoming file into an App Group container, but iOS does not provide a reliable, supported way for that extension to automatically open its containing app. That work must therefore use a visible "saved to ColaMD Reader" completion state and be validated on a signed device before it is considered part of the product flow.
+The app registers Markdown document types for Files app opening. A future WeChat Share Extension can copy an incoming file into an App Group container, but iOS does not provide a reliable, supported way for that extension to automatically open its containing app. That work must therefore use a visible "saved to loomark Reader" completion state and be validated on a signed device before it is considered part of the product flow.

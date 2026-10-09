@@ -1,6 +1,6 @@
 # 网页体验版（首页内嵌 + `/try/`）
 
-一个纯网页的 ColaMD：能打字，能实时切换 12 个主题，用一份样张展示排版。
+一个纯网页的 loomark：能打字，能实时切换 12 个主题，用一份样张展示排版。
 
 **它是什么**：同一个编辑器内核（Milkdown / ProseMirror）＋ 同一套主题 CSS，去掉桌面外壳后编成的静态页面。不是截图，也不是模拟。
 
@@ -36,10 +36,10 @@
 
 | 消息 | 谁发给谁 | 含义 |
 | --- | --- | --- |
-| `colamd-try:ready` | 块 → 首页 | 我加载好了，把当前语言告诉我 |
-| `colamd-try:ask-fullscreen` | 块 → 首页 | 我想全屏 / 想退出，你决定 |
-| `colamd-try:set-fullscreen` | 首页 → 块 | 结果是这个，按它调整 |
-| `colamd-try:set-lang` | 首页 → 块 | 站点切语言了，样张跟上来 |
+| `loomark-try:ready` | 块 → 首页 | 我加载好了，把当前语言告诉我 |
+| `loomark-try:ask-fullscreen` | 块 → 首页 | 我想全屏 / 想退出，你决定 |
+| `loomark-try:set-fullscreen` | 首页 → 块 | 结果是这个，按它调整 |
+| `loomark-try:set-lang` | 首页 → 块 | 站点切语言了，样张跟上来 |
 
 首页收到请求后只做两件事：给 `<html>` 加 `try-fullscreen`（铺满视口 + 锁滚动），再把结论回给框。所以在框里按 Esc、在页面上按 Esc、点「退出全屏」，三条路都能回到原位。
 
@@ -69,7 +69,7 @@ npm run preview:web      # 体验页：http://localhost:4173/
 1. **同一份源码，永不分叉**：网页版 import 的是 `src/renderer` 里的编辑器与主题，改动只允许发生在 `src/web/`（页面外壳）里。想改编辑器行为，改桌面版用的那份。
 2. **不把桌面能力搬进网页版**：`src/web/` 里不出现 `window.electronAPI`。要展示某个桌面能力，就在页面上说明它属于桌面版。
 3. 页面自身的工具栏也用主题变量（`--bg-color` / `--chrome-bg-hover` / `--link-color`），所以换主题时整页一起变。
-4. 首页对体验块只有一个 id（`#colamd-try`）和四个消息类型，别让首页去读框里的 DOM。
+4. 首页对体验块只有一个 id（`#loomark-try`）和四个消息类型，别让首页去读框里的 DOM。
 
 ## 验过什么
 

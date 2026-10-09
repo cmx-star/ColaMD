@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use crate::paths;
 
-/// Write `content` into `~/.colamd/recovered` as `<document>-<stamp>.md`.
+/// Write `content` into `~/.loomark/recovered` as `<document>-<stamp>.md`.
 /// `None` means nothing was written, and therefore nothing may be discarded.
 pub fn keep_recovered_copy(file_path: Option<&Path>, content: &str) -> Option<PathBuf> {
     if content.trim().is_empty() {
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn a_copy_keeps_the_document_name_and_lands_in_the_recovery_folder() {
-        let dir = std::env::temp_dir().join(format!("colamd-recovery-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("loomark-recovery-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
 
         // The real home is not touched: the path is only computed here.

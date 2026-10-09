@@ -10,7 +10,7 @@ export const SAMPLES: Record<'zh' | 'en', string> = {
 
 ## 一段正文
 
-ColaMD 把你写的 Markdown 直接显示成排版后的样子，不用分屏预览。这里有**加粗**、*斜体*、\`行内代码\`，还有一个[链接](https://colamd.com/)。
+loomark 把你写的 Markdown 直接显示成排版后的样子，不用分屏预览。这里有**加粗**、*斜体*、\`行内代码\`，还有一个[链接](https://loomark.com/)。
 
 ## 列表
 
@@ -52,7 +52,7 @@ editor.focus()
 
 ## Body text
 
-ColaMD shows your Markdown as finished text while you type, with no split preview. Here is **bold**, *italic*, \`inline code\`, and a [link](https://colamd.com/).
+loomark shows your Markdown as finished text while you type, with no split preview. Here is **bold**, *italic*, \`inline code\`, and a [link](https://loomark.com/).
 
 ## Lists
 

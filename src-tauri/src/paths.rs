@@ -1,53 +1,55 @@
-// Where ColaMD keeps the things that outlive a run.
+// Where loomark keeps the things that outlive a run.
 //
-// These paths are deliberately the ones the Electron build used, because users
-// already have files there: a migration that moved the theme folder or the recent
-// list would look exactly like data loss. `~/.colamd` holds the shared, visible
-// data (themes, recent documents, recovery copies); the platform data directory
-// holds the quieter preferences, under the same folder name Electron used.
+// The folder names carry the app's name, so renaming the app moved them: `~/.loomark`
+// holds the shared, visible data (themes, recent documents, recovery copies), and the
+// platform data directory holds the quieter preferences under the same name.
+//
+// The rename is deliberate and was accepted without a migration (2026-10-09). The
+// folders used to keep the old names on the grounds that moving them would look like
+// data loss; anyone upgrading from a build under the old name keeps their old folder
+// on disk, but the app no longer reads it.
 
 use std::path::PathBuf;
 
-/// `~/.colamd`
-pub fn colamd_home() -> PathBuf {
-    home_dir().join(".colamd")
+/// `~/.loomark`
+pub fn loomark_home() -> PathBuf {
+    home_dir().join(".loomark")
 }
 
-/// `~/.colamd/themes`: imported custom themes, one CSS file each.
+/// `~/.loomark/themes`: imported custom themes, one CSS file each.
 pub fn themes_dir() -> PathBuf {
-    colamd_home().join("themes")
+    loomark_home().join("themes")
 }
 
-/// `~/.colamd/recovered`: the copy written before unsaved work is discarded.
+/// `~/.loomark/recovered`: the copy written before unsaved work is discarded.
 pub fn recovery_dir() -> PathBuf {
-    colamd_home().join("recovered")
+    loomark_home().join("recovered")
 }
 
-/// `~/.colamd/recent.json`
+/// `~/.loomark/recent.json`
 pub fn recent_store_path() -> PathBuf {
-    colamd_home().join("recent.json")
+    loomark_home().join("recent.json")
 }
 
-/// The preferences directory, named the way Electron's `app.getPath('userData')`
-/// was on each platform, so an install of either shell reads the same settings.
+/// The preferences directory, named after the app.
 pub fn user_data_dir() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
-        home_dir().join("Library").join("Application Support").join("ColaMD")
+        home_dir().join("Library").join("Application Support").join("loomark")
     }
     #[cfg(target_os = "windows")]
     {
         std::env::var_os("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| home_dir().join("AppData").join("Roaming"))
-            .join("ColaMD")
+            .join("loomark")
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         std::env::var_os("XDG_CONFIG_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|| home_dir().join(".config"))
-            .join("ColaMD")
+            .join("loomark")
     }
 }
 
@@ -82,16 +84,16 @@ mod tests {
 
     #[test]
     fn the_shared_folders_live_under_the_home_dot_directory() {
-        let home = colamd_home();
-        assert!(home.ends_with(".colamd"));
-        assert!(themes_dir().ends_with(".colamd/themes"));
-        assert!(recovery_dir().ends_with(".colamd/recovered"));
-        assert!(recent_store_path().ends_with(".colamd/recent.json"));
+        let home = loomark_home();
+        assert!(home.ends_with(".loomark"));
+        assert!(themes_dir().ends_with(".loomark/themes"));
+        assert!(recovery_dir().ends_with(".loomark/recovered"));
+        assert!(recent_store_path().ends_with(".loomark/recent.json"));
     }
 
     #[test]
-    fn preferences_stay_under_the_name_the_electron_build_used() {
-        assert!(user_data_dir().ends_with("ColaMD"));
+    fn preferences_live_under_the_app_name() {
+        assert!(user_data_dir().ends_with("loomark"));
         assert!(renderer_error_log().ends_with("renderer-errors.log"));
     }
 }

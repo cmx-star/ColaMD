@@ -1,4 +1,4 @@
-// The Tauri side of `window.colamd`.
+// The Tauri side of `window.loomark`.
 //
 // The renderer talks to one object, whose shape is declared in platform-api.ts. This
 // file builds that object on top of the Tauri commands, so the editor, the panels and
@@ -9,7 +9,7 @@ import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 import type {
-  ColamdApi,
+  LoomarkApi,
   FileOpenedData,
   FileManagerName,
   ImageExportPreset,
@@ -61,8 +61,8 @@ function documentUrl(path: string | null): string | null {
   return path ? convertFileSrc(path) : null
 }
 
-export function createTauriApi(): ColamdApi {
-  const api: ColamdApi = {
+export function createTauriApi(): LoomarkApi {
+  const api: LoomarkApi = {
     // --- Opening and reading documents ------------------------------------
     openFile: async () => {
       const opened = await invoke<{ path: string | null; content: string } | null>('open_file')
@@ -106,11 +106,11 @@ export function createTauriApi(): ColamdApi {
     getFileManagerName: async () => detectFileManager(),
     revealFile: async () => invoke<boolean>('reveal_file'),
     revealPath: async (target: string) => invoke<boolean>('reveal_path', { target }),
-    showEntryContextMenu: async () => {
-      notYet('showEntryContextMenu')
+    showEntryContextMenu: async (path: string, kind: 'file' | 'directory') => {
+      await invoke('show_entry_context_menu', { path, kind })
     },
-    showTabContextMenu: async () => {
-      notYet('showTabContextMenu')
+    showTabContextMenu: async (payload: { tabId: string; filePath: string | null; canCloseOthers: boolean; canCloseRight: boolean }) => {
+      await invoke('show_tab_context_menu', { payload })
     },
     popupAppMenu: async () => {
       await invoke('popup_app_menu')

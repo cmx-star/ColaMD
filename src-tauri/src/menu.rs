@@ -13,20 +13,14 @@ use crate::i18n::t;
 use crate::paths;
 use crate::recent;
 
-/// The built-in themes, in the order the menu shows them: light first, then dark.
-const BUILT_IN_THEMES: [(&str, &str, &str); 12] = [
+/// The built-in themes the menu offers. Four on purpose: the list is short enough
+/// to pick from without opening anything, and each one is a distinct look rather
+/// than a variation (2026-10-09).
+const BUILT_IN_THEMES: [(&str, &str, &str); 4] = [
     ("light", "浅色", "Light"),
-    ("elegant", "雅致", "Elegant"),
-    ("notion", "简白", "Notion"),
-    ("writer", "作家", "Writer"),
-    ("bear", "熊红", "Bear"),
     ("sepia", "羊皮纸", "Sepia"),
-    ("dark", "深色", "Dark"),
-    ("gruvbox", "暖木", "Gruvbox"),
-    ("midnight", "午夜", "Midnight"),
     ("solarized-dark", "夜航", "Solarized Dark"),
     ("nord", "极地", "Nord"),
-    ("dracula", "德古拉", "Dracula"),
 ];
 
 /// Where a menu command goes: the focused window, else the last one the user worked
@@ -113,12 +107,7 @@ fn format_submenu(app: &AppHandle) -> tauri::Result<tauri::menu::Submenu<tauri::
 fn theme_submenu(app: &AppHandle, current: &str) -> tauri::Result<tauri::menu::Submenu<tauri::Wry>> {
     let mut builder = SubmenuBuilder::new(app, t("主题", "Theme"));
 
-    for (index, (id, zh, en)) in BUILT_IN_THEMES.iter().enumerate() {
-        // A separator splits the light themes from the dark ones, like the Electron
-        // menu does.
-        if index == 6 {
-            builder = builder.separator();
-        }
+    for (id, zh, en) in BUILT_IN_THEMES.iter() {
         let checked = current == *id;
         let item = CheckMenuItemBuilder::with_id(format!("theme-{id}"), t(zh, en))
             .checked(checked)
@@ -203,14 +192,14 @@ fn build_inner(
     let menu = if is_mac {
         let about = PredefinedMenuItem::about(
             app,
-            Some(t("关于 ColaMD", "About ColaMD")),
-            Some(AboutMetadataBuilder::new().name(Some("ColaMD")).version(Some(env!("CARGO_PKG_VERSION"))).build()),
+            Some(t("关于 loomark", "About loomark")),
+            Some(AboutMetadataBuilder::new().name(Some("loomark")).version(Some(env!("CARGO_PKG_VERSION"))).build()),
         )?;
-        let quit = PredefinedMenuItem::quit(app, Some(t("退出 ColaMD", "Quit ColaMD")))?;
-        let hide = PredefinedMenuItem::hide(app, Some(t("隐藏 ColaMD", "Hide ColaMD")))?;
+        let quit = PredefinedMenuItem::quit(app, Some(t("退出 loomark", "Quit loomark")))?;
+        let hide = PredefinedMenuItem::hide(app, Some(t("隐藏 loomark", "Hide loomark")))?;
         let hide_others = PredefinedMenuItem::hide_others(app, Some(t("隐藏其他应用", "Hide Others")))?;
         let show_all = PredefinedMenuItem::show_all(app, Some(t("显示全部", "Show All")))?;
-        SubmenuBuilder::new(app, "ColaMD")
+        SubmenuBuilder::new(app, "loomark")
             .item(&about)
             .separator()
             .item(&hide)
@@ -220,8 +209,8 @@ fn build_inner(
             .item(&quit)
             .build()?
     } else {
-        SubmenuBuilder::new(app, "ColaMD")
-            .item(&PredefinedMenuItem::quit(app, Some(t("退出 ColaMD", "Quit ColaMD")))?)
+        SubmenuBuilder::new(app, "loomark")
+            .item(&PredefinedMenuItem::quit(app, Some(t("退出 loomark", "Quit loomark")))?)
             .build()?
     };
 
@@ -321,7 +310,7 @@ fn build_inner(
             .build(app)?;
         file_builder.item(&close_window)
     } else {
-        file_builder.item(&PredefinedMenuItem::quit(app, Some(t("退出 ColaMD", "Quit ColaMD")))?)
+        file_builder.item(&PredefinedMenuItem::quit(app, Some(t("退出 loomark", "Quit loomark")))?)
     };
     let file = file_builder.build()?;
 
@@ -422,8 +411,8 @@ fn build_inner(
         .build(app)?;
     let about = PredefinedMenuItem::about(
         app,
-        Some(t("关于 ColaMD", "About ColaMD")),
-        Some(AboutMetadataBuilder::new().name(Some("ColaMD")).version(Some(env!("CARGO_PKG_VERSION"))).build()),
+        Some(t("关于 loomark", "About loomark")),
+        Some(AboutMetadataBuilder::new().name(Some("loomark")).version(Some(env!("CARGO_PKG_VERSION"))).build()),
     )?;
     let help = SubmenuBuilder::new(app, t("帮助", "Help"))
         .item(&check_updates)
@@ -507,6 +496,9 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         "view-file-panel" => emit("toggle-file-panel", None),
         "view-source-mode" => emit("toggle-source-mode", None),
         "view-font-settings" => emit("open-font-settings", None),
+        other if other.starts_with("tabmenu:") || other.starts_with("entrymenu:") => {
+            crate::contextmenu_actions::dispatch(app, other);
+        }
         other => {
             if let Some(theme) = other.strip_prefix("theme-custom:") {
                 crate::themes::apply_custom(app, theme);
