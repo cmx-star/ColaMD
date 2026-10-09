@@ -38,6 +38,16 @@
     "category": "Productivity",
     "shortDescription": "A free, elegant Markdown editor",
     "longDescription": "A free, elegant Markdown editor. Simple by design, always in sync with the file on disk.",
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown", "mkd"],
+        "name": "Markdown Document",
+        "description": "Markdown Document",
+        "role": "Editor",
+        "rank": "Owner",
+        "mimeType": "text/markdown"
+      }
+    ],
     "macOS": {
       "minimumSystemVersion": "10.15"
     }
