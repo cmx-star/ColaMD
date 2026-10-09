@@ -92,6 +92,35 @@ pub struct DocumentSnapshot {
     pub tabs: Option<Vec<TabSnapshot>>,
 }
 
+/// Ask a question and report **which label was clicked**, matched by its text.
+///
+/// Matching on the label rather than on a button position is deliberate: rfd reports
+/// the text, and a positional mapping had "cancel" and "discard" the wrong way round,
+/// which threw unsaved work away (2026-10-09). Three of the questions below decide
+/// whether content survives.
+///
+/// The button order follows what the platform does with the keyboard: the first
+/// button is what Enter chooses, the second is what Escape chooses. Escape must never
+/// destroy anything, so the second button is the safe one in every call.
+async fn ask_label(title: &str, message: &str, labels: &[&str]) -> Option<String> {
+    let buttons = match labels.len() {
+        1 => rfd::MessageButtons::OkCustom(labels[0].to_string()),
+        2 => rfd::MessageButtons::OkCancelCustom(labels[0].to_string(), labels[1].to_string()),
+        _ => rfd::MessageButtons::YesNoCancelCustom(labels[0].to_string(), labels[1].to_string(), labels[2].to_string()),
+    };
+    match rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_title(title)
+        .set_description(message)
+        .set_buttons(buttons)
+        .show()
+        .await
+    {
+        rfd::MessageDialogResult::Custom(label) => Some(label),
+        _ => None,
+    }
+}
+
 // --- opening ----------------------------------------------------------------
 
 fn open_filters() -> Vec<(&'static str, Vec<&'static str>)> {
@@ -429,18 +458,19 @@ pub async fn report_external_conflict(window: WebviewWindow, ctx: tauri::State<'
         None => None,
     };
 
-    let choice = window
-        .dialog()
-        .message(t("文件已被其他程序修改", "The file was changed by another program"))
-        .title(t("未保存的修改与外部修改冲突", "Unsaved changes conflict with an external edit"))
-        .kind(MessageDialogKind::Warning)
-        .buttons(MessageDialogButtons::OkCancelCustom(
-            t("保留我的版本（继续编辑）", "Keep my version (keep editing)").to_string(),
-            t("加载磁盘上的版本（我的内容会存成恢复文件）", "Load the version on disk (my version is kept as a recovery file)").to_string(),
-        ))
-        .blocking_show();
+    let keep = t("保留我的版本（继续编辑）", "Keep my version (keep editing)").to_string();
+    let load = t("加载磁盘上的版本（我的内容会存成恢复文件）", "Load the version on disk (my version is kept as a recovery file)").to_string();
+    let answer = ask_label(
+        t("未保存的修改与外部修改冲突", "Unsaved changes conflict with an external edit"),
+        t(
+            "磁盘上的文件已被其他程序修改，而你正在编辑的内容还没保存。请选择保留哪个版本。",
+            "The file on disk was changed by another program while your edits were unsaved. Choose which version to keep.",
+        ),
+        &[&keep, &load, t("取消", "Cancel")],
+    )
+    .await;
 
-    if !choice {
+    if answer.as_deref() != Some(load.as_str()) {
         let _ = window.emit(
             "external-conflict-result",
             ConflictResult { action: "keep".to_string(), content: None, recovery_path: None },
@@ -509,6 +539,24 @@ pub async fn report_dirty(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>, 
     let doc = ctx.doc(window.label());
     doc.lock().expect("doc lock").dirty = is_dirty;
     Ok(())
+}
+
+/// Ask before throwing unsaved content away. Anything other than an explicit
+/// "discard" answers false, because the safe direction for this question is to keep
+/// the content (PRINCIPLES.md, 用户数据不可丢).
+#[tauri::command]
+pub async fn confirm_discard_tab(window: WebviewWindow, message: String) -> Result<bool, String> {
+    trace(|| format!("asked: discard an unsaved tab? ({})", window.label()));
+    let discard = t("丢弃", "Discard").to_string();
+    let answer = ask_label(
+        t("未保存的标签页", "Unsaved tab"),
+        &message,
+        &[&discard, t("取消", "Cancel")],
+    )
+    .await;
+    // Only the label that says "Discard" discards; Escape, the window's close button
+    // and any other outcome keep the content.
+    Ok(answer.as_deref() == Some(discard.as_str()))
 }
 
 #[tauri::command]
@@ -592,14 +640,17 @@ pub async fn confirm_close(window: &tauri::Window) -> bool {
     let Some(snapshot) = request_document_state(window, std::time::Duration::from_millis(1500)).await else {
         // The renderer is unresponsive: it cannot report state or save anything, so
         // blocking forever would trap the user. Offer an explicit escape instead.
-        let close_anyway = window
-            .dialog()
-            .message(t("无法与编辑窗口通信", "Cannot reach the editor window"))
-            .title(t("仍要关闭？", "Close anyway?"))
-            .kind(MessageDialogKind::Warning)
-            .buttons(MessageDialogButtons::OkCancelCustom(t("仍要关闭", "Close anyway").to_string(), t("取消", "Cancel").to_string()))
-            .blocking_show();
-        return close_anyway;
+        let close_anyway = t("仍要关闭", "Close anyway").to_string();
+        let answer = ask_label(
+            t("仍要关闭？", "Close anyway?"),
+            t(
+                "窗口可能已停止响应，无法确认是否有未保存的修改。强行关闭可能丢失内容。",
+                "The window is not responding, so unsaved changes cannot be checked. Closing it may lose content.",
+            ),
+            &[&close_anyway, t("取消", "Cancel")],
+        )
+        .await;
+        return answer.as_deref() == Some(close_anyway.as_str());
     };
 
     if !snapshot.dirty {
@@ -672,19 +723,21 @@ pub async fn confirm_close(window: &tauri::Window) -> bool {
 
     let untitled_tabs = tabs.iter().filter(|tab| tab.path.is_none()).count();
     if untitled_tabs > 0 {
-        let discard = window
-            .dialog()
-            .message(t(
-                "关闭窗口会丢掉它们里的内容。请先切到那些标签页保存。",
-                "Closing the window would lose their content. Switch to those tabs and save them first.",
-            ))
-            .title(t("还有未命名的标签页没有保存", "Some untitled tabs are still unsaved"))
-            .kind(MessageDialogKind::Warning)
-            .buttons(MessageDialogButtons::OkCancelCustom(t("取消", "Cancel").to_string(), t("丢弃未命名标签页", "Discard untitled tabs").to_string()))
-            .blocking_show();
-        if !discard {
-            return false;
-        }
+        // This one only explains. It is the only dialog that would discard several
+        // documents at once, so it offers no single button that does it: the user
+        // saves or discards each tab (each has its own guard) and closes again.
+        // Electron allowed "discard untitled tabs" here; dropping that button removes
+        // the one path that could lose more than the document in front of the user.
+        ask_label(
+            t("还有未命名的标签页没有保存", "Some untitled tabs are still unsaved"),
+            t(
+                "关闭窗口会丢掉它们里的内容。请先切到那些标签页保存，或逐个关闭它们。",
+                "Closing the window would lose their content. Switch to those tabs and save them, or close them one by one.",
+            ),
+            &[t("知道了", "OK")],
+        )
+        .await;
+        return false;
     }
 
     if !write_and_remember(&doc, &file_path, &snapshot.content).await {

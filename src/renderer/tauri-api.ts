@@ -99,6 +99,7 @@ export function createTauriApi(): ElectronAPI {
       invoke<string | null>('save_file', { content, expectedPath, rebuildMenu, autosave }),
     saveFileAs: async (content: string, expectedPath?: string) =>
       invoke<string | null>('save_file_as', { content, expectedPath }),
+    confirmDiscardTab: async (message: string) => invoke<boolean>('confirm_discard_tab', { message }),
     reportDirty: (isDirty: boolean) => {
       void invoke('report_dirty', { isDirty }).catch(() => undefined)
     },

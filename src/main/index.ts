@@ -2395,6 +2395,24 @@ ipcMain.handle('request-close-window', (event) => {
 // The one trace a white window leaves behind (#126): the renderer's init threw
 // and the packaged app has no console to show it. Append-only, few lines a
 // failure, and it lives with the other user data.
+// Discarding unsaved content is asked through the shell rather than
+// `window.confirm`, because not every shell implements that dialog and the one that
+// does not answers "yes" (2026-10-09, Tauri). Cancel is the default and the answer
+// for anything that is not an explicit discard.
+ipcMain.handle('confirm-discard-tab', async (event, message: unknown) => {
+  const win = getWinFromEvent(event)
+  if (!win) return false
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'warning',
+    buttons: [uiText('取消', 'Cancel'), uiText('丢弃', 'Discard')],
+    defaultId: 0,
+    cancelId: 0,
+    message: uiText('未保存的标签页', 'Unsaved tab'),
+    detail: typeof message === 'string' ? message : ''
+  })
+  return response === 1
+})
+
 ipcMain.handle('log-renderer-error', (_event, message: string) => {
   const line = `[${new Date().toISOString()}] ${String(message).slice(0, 8000)}\n`
   return appendFile(join(app.getPath('userData'), 'renderer-errors.log'), line, 'utf-8').catch(() => { /* nowhere to write it */ })

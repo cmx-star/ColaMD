@@ -668,7 +668,7 @@ async function closeTab(id: string): Promise<void> {
   if (tab.id === activeTabId) {
     captureActiveTab()
     if (!await saveTabForLeaving(tab)) return
-    if (tab.dirty && !tab.filePath && !confirmDiscardUntitled()) return
+    if (tab.dirty && !tab.filePath && !(await confirmDiscardUntitled())) return
   } else if (tab.dirty) {
     // A background tab is not the active document, so it is written straight to
     // its own path; an untitled one cannot be written without a dialog.
@@ -676,7 +676,7 @@ async function closeTab(id: string): Promise<void> {
       const saved = await window.electronAPI.saveFile(tab.content, tab.filePath, false, false)
       if (!saved) return
       tab.dirty = false
-    } else if (!confirmDiscardUntitled()) {
+    } else if (!(await confirmDiscardUntitled())) {
       return
     }
   }
@@ -700,8 +700,12 @@ async function closeTab(id: string): Promise<void> {
 }
 
 // An untitled tab has nowhere to go on disk, so closing it asks first.
-function confirmDiscardUntitled(): boolean {
-  return window.confirm(isChinese()
+// Asking the shell, not `window.confirm`: the browser dialog is implemented by
+// Electron but not by WKWebView, where wry answers it as "yes" without showing
+// anything. That silently discarded unsaved tabs (2026-10-09), which is the one
+// failure this app must never have.
+async function confirmDiscardUntitled(): Promise<boolean> {
+  return window.electronAPI.confirmDiscardTab(isChinese()
     ? '这个标签页还没有保存，关闭会丢掉里面的内容。'
     : 'This tab has unsaved content. Close it anyway?')
 }

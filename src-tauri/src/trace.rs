@@ -7,7 +7,12 @@
 // stderr, which is what a tester (or a script) can collect.
 //
 // Off by default, and deliberately cheap when off: one environment lookup, cached.
+//
+// Lines go to stderr and to `~/.colamd/trace.log`. The file matters when the app is
+// started by the system rather than by a terminal (`open -a ColaMD`), where nothing
+// is attached to stderr; a test round then still has evidence to read afterwards.
 
+use std::io::Write;
 use std::sync::OnceLock;
 
 fn enabled() -> bool {
@@ -15,10 +20,23 @@ fn enabled() -> bool {
     *ENABLED.get_or_init(|| std::env::var("COLAMD_TRACE").map(|value| value == "1").unwrap_or(false))
 }
 
-/// Print one trace line when tracing is on. Arguments are formatted lazily.
+fn log_path() -> std::path::PathBuf {
+    crate::paths::colamd_home().join("trace.log")
+}
+
+/// Report one decision when tracing is on. Arguments are formatted lazily.
 pub fn trace(message: impl FnOnce() -> String) {
     if !enabled() {
         return;
     }
-    eprintln!("[colamd] {}", message());
+    let line = format!("[colamd] {}\n", message());
+    eprint!("{line}");
+
+    let path = log_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = file.write_all(line.as_bytes());
+    }
 }

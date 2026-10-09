@@ -100,6 +100,9 @@ export interface ElectronAPI {
   downloadUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
   reportDirty: (isDirty: boolean) => void
+  /** A real confirmation for discarding unsaved content. `window.confirm` is not
+   *  available in every shell, and the shell that lacks it answers "yes". */
+  confirmDiscardTab: (message: string) => Promise<boolean>
   reportRendererReady: () => void
   closeWindow: () => Promise<void>
   logRendererError: (message: string) => Promise<void>
@@ -264,6 +267,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   reportDirty: (isDirty: boolean) => ipcRenderer.send('set-dirty', isDirty),
+  confirmDiscardTab: (message: string) => ipcRenderer.invoke('confirm-discard-tab', message),
   reportRendererReady: () => ipcRenderer.send('renderer-ready'),
   closeWindow: () => ipcRenderer.invoke('request-close-window'),
   logRendererError: (message: string) => ipcRenderer.invoke('log-renderer-error', message),
