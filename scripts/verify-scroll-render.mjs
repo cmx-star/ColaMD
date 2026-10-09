@@ -17,13 +17,14 @@
 //       先构建：npm run build && npx tauri build --no-bundle
 // 窗口放在屏幕外，不占用屏幕。
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { stopVerifyApp, verifyWorkdir } from './verify-workdir.mjs'
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..')
-const WORK = join(homedir(), 'Library', 'Caches', `loomark-verify-scroll-${Date.now()}`)
+// 每个脚本一个固定目录，开跑前擦干净，退出时再擦（见 verify-workdir.mjs）。
+const { dir: WORK } = verifyWorkdir('scroll-render')
 const BINARY = process.env.COLAMD_BINARY ?? join(APP, 'src-tauri', 'target', 'release', 'loomark')
 
 /** 文档要足够长，长到「打开时解析到的那一段」离尾部很远。 */
@@ -49,7 +50,6 @@ async function main() {
     return
   }
 
-  mkdirSync(WORK, { recursive: true })
   const source = join(WORK, 'big.md')
   const answer = join(WORK, 'answer.json')
   writeFileSync(source, fixture(), 'utf8')
@@ -83,9 +83,10 @@ async function main() {
         `等了 ${state.waited}ms，首行「${state.first}」`)
     }
   } finally {
-    try { process.kill(-child.pid, 'SIGKILL') } catch { /* 已经退出 */ }
+    // 按标记（工作目录路径）回收，不按 pid：脚本自己被强杀时，按 pid 的那条路
+    // 根本不会跑到，进程就留在机器上了（见 verify-workdir.mjs）。
+    stopVerifyApp(WORK)
     await sleep(300)
-    rmSync(WORK, { recursive: true, force: true })
   }
 
   if (failures) {

@@ -133,8 +133,10 @@ export function createTauriApi(): LoomarkApi {
       // drag-drop event wired at the bottom of this file instead.
       return ''
     },
-    openExternal: (url: string) => {
-      window.open(url, '_blank', 'noopener')
+    openExternal: async (url: string) => {
+      // `window.open` opened nothing here: the webview either blocks it or answers
+      // with an empty window, so a link in a document did nothing (2026-10-09).
+      await invoke('open_external', { url }).catch(() => undefined)
     },
     readClipboardText: async () => {
       try {

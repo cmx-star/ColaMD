@@ -527,6 +527,22 @@ pub async fn report_external_conflict(window: WebviewWindow, ctx: tauri::State<'
 
 // --- shell reporting --------------------------------------------------------
 
+/// Hand an external URL to the system's default browser.
+///
+/// The renderer used to call `window.open`, which the webview either blocks or
+/// answers with an empty window: a link in a document did nothing (2026-10-09).
+/// Only the schemes `opener:default` covers get through, so a `file:` or a
+/// script URL cannot reach the shell this way.
+#[tauri::command]
+pub async fn open_external(window: WebviewWindow, url: String) -> Result<bool, String> {
+    let lowered = url.trim().to_ascii_lowercase();
+    let allowed = ["http://", "https://", "mailto:", "tel:"];
+    if !allowed.iter().any(|scheme| lowered.starts_with(scheme)) {
+        return Ok(false);
+    }
+    Ok(window.app_handle().opener().open_url(url, None::<&str>).is_ok())
+}
+
 #[tauri::command]
 pub async fn reveal_file(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>) -> Result<bool, String> {
     let path = { ctx.doc(window.label()).lock().expect("doc lock").file_path.clone() };

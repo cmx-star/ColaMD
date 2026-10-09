@@ -210,6 +210,7 @@ fn main() {
             commands::report_external_conflict,
             commands::reveal_file,
             commands::reveal_path,
+            commands::open_external,
             commands::report_dirty,
             commands::verify_report,
             commands::show_entry_context_menu,
