@@ -1,6 +1,8 @@
-import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
+import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
 import { markdownForWord } from './editor/mermaid-export'
 import { documentHTMLFrom } from './editor/clean-html'
+import { jumpToSourceLine } from './editor/source-line'
+import { resolveMarkdownLink } from './editor/markdown-link'
 import { isPresenting, startSlideshow, stopSlideshow } from './slideshow'
 import { enterPrintLayout, exitPrintLayout } from './slides-export'
 import { enterPaperLayout, exitPaperLayout } from './print-layout'
@@ -730,11 +732,64 @@ async function openFileInNewTab(path: string): Promise<void> {
   // Claim the path before the 'file-opened' round-trip lands: a burst of
   // queued tab-opens would otherwise see this tab as still blank and reuse it
   // for the next file, overwriting the one just opened (#99).
+  // A failed save can keep openNewTab from creating a tab at all, in which case
+  // activeTab() is still the source document: claiming it there would rewrite
+  // the file you were reading.
   const claimed = activeTab()
-  if (claimed) claimed.filePath = path
+  if (!claimed || claimed === current) return
+  claimed.filePath = path
   await window.loomark.openSibling(path)
 }
 
+// Tab-opens are serialized: each request awaits main (activateFile, file-opened)
+// before the next runs. Without this, a burst of queued opens (multi-file launch,
+// fast second-instance) interleaves and two documents land in one tab (#99).
+let tabOpenQueue: Promise<void> = Promise.resolve()
+
+/**
+ * Open a document in a tab, optionally landing on a heading (`#标题`) or a source
+ * line (`:147`); the line wins when both are given.
+ */
+function enqueueTabOpen(path: string, fragment?: string, line?: number): Promise<void> {
+  tabOpenQueue = tabOpenQueue.then(async () => {
+    await openFileInNewTab(path)
+    if ((!fragment && line === undefined) || currentFilePath !== path) return
+    // Two frames: the tab's own scroll restore runs first, so the landing spot is
+    // the one the reader ends up at. A hidden window suspends frames, which is why
+    // the visual half is queued rather than awaited here.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (currentFilePath !== path) return
+      if (line !== undefined) {
+        if (sourceModeActive) jumpToSourceLine(sourceEl(), line)
+        else jumpToLine(Math.min(line, getMarkdown().split('\n').length) - 1)
+        return
+      }
+      if (sourceModeActive) exitSourceMode()
+      jumpToHeading(fragment!)
+    }))
+  }).catch(() => { /* next file still opens */ })
+  return tabOpenQueue
+}
+
+/**
+ * ⌘/Ctrl+点击一个本地 Markdown 链接。
+ *
+ * 解析在渲染层（当前文档路径只在这里），校验和打开走外壳：外壳先确认那个路径确实是
+ * 一个存在的文件，再让这一层把它开进标签页。这样链接指向的文件被移走时报的是失败，
+ * 而不是开出一个空标签。
+ */
+function openMarkdownLink(href: string): void {
+  const link = resolveMarkdownLink(href, currentFilePath)
+  if (!link) return
+  void window.loomark.openMarkdownLink(link.path, link.fragment, link.line).then((ok) => {
+    if (ok) return
+    // 链接指向的文件被移走或改名：写进 renderer 错误日志（界面不弹东西，
+    // 见 PRINCIPLES.md 的「界面保持安静」），排查时在日志里看得到是哪一条链接。
+    const message = `[link] could not open ${link.path}`
+    console.error(message)
+    void window.loomark.logRendererError?.(message)
+  })
+}
 // Closing several tabs runs one at a time: each close may need its own unsaved
 // confirmation, and a cancelled one stops the rest.
 async function closeTabsMatching(keep: (index: number) => boolean): Promise<void> {
@@ -748,19 +803,15 @@ async function closeTabsMatching(keep: (index: number) => boolean): Promise<void
 }
 
 function bindTabBar(api: LoomarkApi): void {
-  // Tab-opens are serialized: each request awaits main (activateFile,
-  // file-opened) before the next runs. Without this, a burst of queued opens
-  // (multi-file launch, fast second-instance) interleaves and two documents
-  // land in one tab (#99).
-  let tabOpenQueue: Promise<void> = Promise.resolve()
-  const enqueueTabOpen = (path: string): void => {
-    tabOpenQueue = tabOpenQueue.then(() => openFileInNewTab(path)).catch(() => { /* next file still opens */ })
-  }
   // Tabs are also created from the File menu / ⌘T and from the file list; the
   // strip's own plus is bound above, in renderTabBar.
   api.onMenuNewTab(() => { void openNewTab() })
   api.onMenuCloseTab(() => { if (activeTabId) void closeTab(activeTabId) })
-  api.onOpenInNewTab(enqueueTabOpen)
+  api.onOpenInNewTab((path) => { void enqueueTabOpen(path) })
+  // 本地 Markdown 链接：外壳确认过文件存在，这里把它开进标签页并定位。
+  api.onOpenMarkdownLink((request) => {
+    void enqueueTabOpen(request.path, request.fragment, request.line)
+  })
   const handleTabMenuAction = ({ action, tabId }: { action: string; tabId: string }) => {
     if (action === 'close') { void closeTab(tabId); return }
     if (action === 'close-others') { void closeTabsMatching((i) => tabs[i].id !== tabId); return }
@@ -1964,6 +2015,14 @@ async function init(): Promise<void> {
   // same jump lock the outline clicks use, so the highlight cannot be stolen
   // by sections passed along the way (review on #68).
   onEditorJumpPhase((phase) => (phase === 'start' ? beginOutlineJump() : endOutlineJump()))
+
+  // ⌘+点击本地 Markdown 链接：解析成绝对路径，在标签页里打开。返回 false 交给外壳
+  // 按普通网址处理（见 editor.ts 的 onLocalMarkdownLink）。
+  onLocalMarkdownLink((href) => {
+    if (!resolveMarkdownLink(href, currentFilePath)) return false
+    openMarkdownLink(href)
+    return true
+  })
 
   updatePanelVisibility()
   await refreshSiblings()

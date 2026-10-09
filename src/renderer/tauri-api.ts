@@ -200,6 +200,15 @@ export function createTauriApi(): LoomarkApi {
     onFileChanged: (callback: (content: string) => void) => on<string>('file-changed', callback),
     onSiblingsChanged: (callback: (files: SiblingFile[]) => void) => on<SiblingFile[]>('siblings-changed', callback),
     onOpenInNewTab: (callback: (path: string) => void) => on<string>('open-in-new-tab', callback),
+    openMarkdownLink: async (path: string, fragment: string, line?: number) => {
+      try {
+        return await invoke<boolean>('open_markdown_link', { path, fragment: fragment || null, line: line ?? null })
+      } catch {
+        return false
+      }
+    },
+    onOpenMarkdownLink: (callback) =>
+      on<{ path: string; fragment?: string; line?: number }>('open-in-new-tab-request', callback),
     onFocusFile: (callback: (path: string) => void) => on<string>('focus-file', callback),
     onExternalConflictResult: (callback) => on('external-conflict-result', callback),
     onRequestDocumentState: (callback: (requestId: string) => void) => on<string>('request-document-state', callback),

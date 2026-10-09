@@ -211,6 +211,7 @@ fn main() {
             commands::reveal_file,
             commands::reveal_path,
             commands::open_external,
+            commands::open_markdown_link,
             commands::report_dirty,
             commands::verify_report,
             commands::show_entry_context_menu,

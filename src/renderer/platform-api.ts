@@ -34,6 +34,9 @@ export interface LoomarkApi {
   fileUrl: (path: string) => Promise<string | null>
   onFocusFile: (callback: (path: string) => void) => void
   onOpenInNewTab: (callback: (path: string) => void) => void
+  /** A local Markdown link: open it in a tab and land on the fragment or line. */
+  openMarkdownLink: (path: string, fragment: string, line?: number) => Promise<boolean>
+  onOpenMarkdownLink: (callback: (request: { path: string; fragment?: string; line?: number }) => void) => void
   saveFile: (content: string, expectedPath?: string, rebuildMenu?: boolean, autosave?: boolean) => Promise<string | null>
   saveFileAs: (content: string, expectedPath?: string) => Promise<string | null>
   exportPDF: () => Promise<boolean>

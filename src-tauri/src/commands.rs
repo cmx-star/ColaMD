@@ -70,6 +70,21 @@ pub struct ActiveDocument {
     pub mtime: u64,
 }
 
+/// A file the renderer wants in a tab of its own, plus where to land in it.
+///
+/// `fragment` is the `#标题` half of a link and `line` its `:147` half; a plain
+/// open sends neither. They travel with the request because only the renderer
+/// knows what a heading slug means (see markdown-link.ts).
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TabOpenRequest {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fragment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+}
+
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ConflictResult {
@@ -541,6 +556,23 @@ pub async fn open_external(window: WebviewWindow, url: String) -> Result<bool, S
         return Ok(false);
     }
     Ok(window.app_handle().opener().open_url(url, None::<&str>).is_ok())
+}
+
+/// Open a local Markdown file in a tab of its own, landing on `fragment` or `line`.
+///
+/// The renderer resolves the link first (it owns the current document's path, and
+/// relative links resolve against that), then asks for the tab here. The path is
+/// checked to exist and to be a file before anything is opened, so a link to
+/// something that moved reports a failure instead of opening an empty tab.
+#[tauri::command]
+pub async fn open_markdown_link(window: WebviewWindow, path: String, fragment: Option<String>, line: Option<u32>) -> Result<bool, String> {
+    let target = PathBuf::from(&path);
+    if !target.is_file() {
+        return Ok(false);
+    }
+    let request = TabOpenRequest { path, fragment, line };
+    let _ = window.emit("open-in-new-tab-request", request);
+    Ok(true)
 }
 
 #[tauri::command]

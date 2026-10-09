@@ -26,7 +26,8 @@
     "verify:features": "node scripts/verify-features.mjs",
     "verify:image-export": "node scripts/verify-image-export.mjs",
     "verify:markdown": "node scripts/verify-markdown.mjs",
-    "verify:scroll-render": "node scripts/verify-scroll-render.mjs"
+    "verify:scroll-render": "node scripts/verify-scroll-render.mjs",
+    "verify:links": "node scripts/verify-links.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

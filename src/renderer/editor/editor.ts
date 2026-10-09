@@ -20,46 +20,16 @@ import { headingFlashEffect, setCleanExport as setCleanExportEffect, setDocument
 import { runFormatCommand as runFormat, type FormatCommandId } from './format-commands'
 import { releaseMermaidRenderer as releaseMermaidRendererBridge } from './mermaid-bridge'
 import { isChinese } from '../ui-language'
+import { headingAnchorLine } from './heading-anchor'
 
 // katex 的样式表仍要引，公式 widget 里渲出来的 HTML 靠它排版。
 import 'katex/dist/katex.min.css'
 
 // --- 标题锚点（文档内跳转，见 #50）---
 
-// GitHub 风格的标题 slug：小写、去标点（CJK 与字母保留）、空格变连字符。
-// 重复的 slug 依次加 -1、-2 …
-function slugifyHeading(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, '')
-    .replace(/\s+/g, '-')
-}
-
-function headingAnchorMap(root: HTMLElement): Map<string, Element> {
-  const map = new Map<string, Element>()
-  const seen = new Map<string, number>()
-  root.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((heading) => {
-    const base = slugifyHeading(heading.textContent || '')
-    if (!base) return
-    const count = seen.get(base) ?? 0
-    seen.set(base, count + 1)
-    const slug = count === 0 ? base : `${base}-${count}`
-    map.set(slug.toLowerCase(), heading)
-  })
-  return map
-}
-
-function findHeadingAnchor(root: HTMLElement, rawTarget: string): Element | null {
-  let decoded = rawTarget
-  try {
-    decoded = decodeURIComponent(rawTarget)
-  } catch {
-    // 百分号编码坏掉了，拿原文再试
-  }
-  const map = headingAnchorMap(root)
-  return map.get(decoded.toLowerCase()) ?? map.get(slugifyHeading(decoded).toLowerCase()) ?? null
+export function jumpToHeading(fragment: string): void {
+  const line = headingAnchorLine(getMarkdown(), fragment)
+  if (line !== null) jumpToLine(line)
 }
 
 // --- 标题跳转的落点反馈（见 #64）---
@@ -70,6 +40,18 @@ export type EditorJumpPhase = 'start' | 'settle'
 let editorJumpPhaseListener: ((phase: EditorJumpPhase) => void) | null = null
 export function onEditorJumpPhase(listener: ((phase: EditorJumpPhase) => void) | null): void {
   editorJumpPhaseListener = listener
+}
+
+// 打开本地 Markdown 链接的钩子。由 main.ts 装上，因为它要拿到当前文档路径（解析相对
+// 路径用）并走标签页那一套。返回 false 表示「这不是一个本地 Markdown 链接」，交给
+// 外壳按普通网址打开。编辑器层不认识标签页，所以做成钩子而不是直接调用。
+let localLinkOpener: ((href: string) => boolean) | null = null
+export function onLocalMarkdownLink(opener: ((href: string) => boolean) | null): void {
+  localLinkOpener = opener
+}
+
+function openLocalMarkdownLink(href: string): boolean {
+  return localLinkOpener ? localLinkOpener(href) : false
 }
 
 // 跳转反馈要落在用户实际在看的地方，所以等平滑滚动停稳（scrollend）再闪，
@@ -215,33 +197,44 @@ function linkHrefOf(target: EventTarget | null): string | null {
 }
 
 function installEditorInteractions(root: HTMLElement, view: EditorView): void {
+  // Keep CM6 from revealing the link source on mousedown and removing the
+  // clicked decoration before the click event can read its destination.
+  root.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return
+    const href = linkHrefOf(e.target)
+    if (href && (href.startsWith('#') || e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }, true)
+
   // 文档内锚点是纯导航：在捕获阶段处理掉，别让 CM6 再插手，
   // 否则放置光标（以及它异步的滚动到选区）会盖掉这次标题跳转（#50）。
   root.addEventListener(
     'click',
     (e) => {
+      if (e.button !== 0) return
       const href = linkHrefOf(e.target)
       if (!href || !href.startsWith('#')) return
       e.preventDefault()
       e.stopPropagation()
-      const heading = findHeadingAnchor(root, href.slice(1))
-      if (heading) {
-        heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        flashHeadingOnArrival(heading)
-      }
+      jumpToHeading(href.slice(1))
     },
     true,
   )
 
-  // ⌘/Ctrl + 点击在浏览器里打开外部链接
+  // ⌘/Ctrl + 点击：网页交给浏览器，本地 Markdown 在标签页打开。
+  // 分流放在渲染层：当前文档路径（解析相对路径要用）本来就只在这里。外壳只负责
+  // 「打开一个网址」和「打开一个绝对路径」，它不需要知道链接是在哪里写的。
   root.addEventListener('click', (e) => {
-    if (!(e.metaKey || e.ctrlKey)) return
+    if (e.button !== 0 || !(e.metaKey || e.ctrlKey)) return
     const href = linkHrefOf(e.target)
     if (href && !href.startsWith('#')) {
       e.preventDefault()
-      window.loomark.openExternal(href)
+      e.stopPropagation()
+      if (!openLocalMarkdownLink(href)) window.loomark.openExternal(href)
     }
-  })
+  }, true)
 
   // 任务列表：点复选框切换勾选。
   // CM6 这边没有节点可以改 attrs，勾选就是改写源码里的 `[ ]` / `[x]`。
