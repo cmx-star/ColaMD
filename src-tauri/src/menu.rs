@@ -193,8 +193,13 @@ fn build_inner(
     };
 
     // --- File ---------------------------------------------------------------
-    let new_window = MenuItemBuilder::with_id("file-new", t("新建", "New"))
+    // New opens a tab in this window: design.md, "新建也是开标签，不是开窗口".
+    // A separate window is the user asking for one, which is what the item below is.
+    let new_tab_from_new = MenuItemBuilder::with_id("file-new", t("新建", "New"))
         .accelerator("CmdOrCtrl+N")
+        .build(app)?;
+    let new_window = MenuItemBuilder::with_id("file-new-window", t("新建窗口", "New Window"))
+        .accelerator("CmdOrCtrl+Shift+N")
         .build(app)?;
     let open = MenuItemBuilder::with_id("file-open", t("打开...", "Open..."))
         .accelerator("CmdOrCtrl+O")
@@ -227,6 +232,7 @@ fn build_inner(
         MenuItemBuilder::with_id("file-export-image-mobile", t("导出图片（手机阅读）...", "Export Image (Mobile)...")).build(app)?;
 
     let mut file_builder = SubmenuBuilder::new(app, t("文件", "File"))
+        .item(&new_tab_from_new)
         .item(&new_window)
         .item(&open)
         .item(&recents)
@@ -398,7 +404,8 @@ pub fn handle_event(app: &AppHandle, id: &str) {
     let emit = |event: &str, payload: Option<&str>| send_to_focused(app, event, payload);
 
     match id {
-        "file-new" => crate::windows::open_untitled_window(app),
+        "file-new" => emit("menu-new-tab", None),
+        "file-new-window" => crate::windows::open_untitled_window(app),
         "file-open" => emit("menu-open", None),
         "file-new-tab" => emit("menu-new-tab", None),
         "file-close-tab" => emit("menu-close-tab", None),
