@@ -390,6 +390,8 @@ Declined (2026-09-15), after re-examining it rather than on first instinct. An e
 
 **Declined (2026-09-13).** On macOS a system-WebView shell would collapse the download from 82 MB to roughly Typora's 14 MB, because the OS supplies the browser. It does not pay off anywhere else: Typora's own Windows installer is 86 to 108 MB for the same reason ours is 115 MB, there is no dependable system WebView on Windows, and WebKitGTK on Linux carries real distro and rendering risk. A main-process rewrite for one of three platforms is not worth it. Revisit only if ColaMD ever becomes macOS-only.
 
+**Superseded (2026-09-30): the migration is now planned.** The maintainer made download size the priority, which changes the premise this rejection rested on. What changed, concretely: WebView2 is now the default runtime on Windows 10 and 11 (LTSC images fall back to a guided download), the rewrite scope was measured rather than assumed (main process 2978 lines plus 77 preload members; the 6724-line renderer is engine-independent DOM/TS and moves across untouched), and the 85 MB arm64 package is 70 MB of bundled Chromium that no configuration change can remove. The Linux WebKitGTK risk is managed by treating Linux as the last platform to ship, not as a blocker. Plan, stages and acceptance criteria: [tauri-migration-plan.md](tauri-migration-plan.md). This entry stays for the record: the 2026-09-13 reasoning was sound for the evidence available then.
+
 
 ### Built-in translation
 
