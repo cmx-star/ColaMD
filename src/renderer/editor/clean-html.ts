@@ -188,7 +188,10 @@ function renderGroup(kind: LineKind, lines: HTMLElement[]): string {
     return clone.outerHTML
   }
   if (kind === 'hr') return '<hr>'
-  if (kind === 'empty') return '<p><br></p>'
+  // 空行在 markdown 里只是段落分隔，元素本身已经把它表达出来了。
+  // 再输出一个 `<p><br></p>` 就是**多一段**：粘到 Typora 里段落之间会凭空多一行
+  //（2026-10-06 报的），导出的 HTML 在浏览器里同样多一截空白。
+  if (kind === 'empty') return ''
   if (kind.startsWith('h')) {
     const level = kind.slice(1)
     return `<h${level}>${lineHTML(lines[0])}</h${level}>`

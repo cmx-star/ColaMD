@@ -333,13 +333,17 @@ fn build_inner(
         .build()?;
 
     // --- View ---------------------------------------------------------------
-    let zoom_out = MenuItemBuilder::with_id("view-zoom-out", t("缩小", "Zoom Out"))
+    // These three used to zoom the whole page (`set_zoom`). That scales the chrome
+    // row with it, and macOS draws the traffic lights at the window's own size, so
+    // they stopped being centred (2026-10-06). They now step the document's font
+    // size in the renderer: the interface keeps its size, only the prose changes.
+    let zoom_out = MenuItemBuilder::with_id("view-zoom-out", t("缩小字号", "Smaller Text"))
         .accelerator("CmdOrCtrl+-")
         .build(app)?;
-    let zoom_in = MenuItemBuilder::with_id("view-zoom-in", t("放大", "Zoom In"))
+    let zoom_in = MenuItemBuilder::with_id("view-zoom-in", t("放大字号", "Larger Text"))
         .accelerator("CmdOrCtrl+=")
         .build(app)?;
-    let zoom_reset = MenuItemBuilder::with_id("view-zoom-reset", t("实际大小", "Actual Size"))
+    let zoom_reset = MenuItemBuilder::with_id("view-zoom-reset", t("默认字号", "Default Text Size"))
         .accelerator("CmdOrCtrl+0")
         .build(app)?;
     // ⌘T, not ⌘\: that key was taken by another app on the machine this was tested
@@ -479,20 +483,12 @@ pub fn handle_event(app: &AppHandle, id: &str) {
             build(app);
         }
         "edit-find" => emit("editor:search", None),
-        "view-zoom-in" | "view-zoom-out" | "view-zoom-reset" => {
-            let Some(window) = window else { return };
-            let state = app.state::<crate::MenuState>();
-            let label = window.label();
-            let factor = match id {
-                "view-zoom-reset" => state.reset_zoom(label),
-                "view-zoom-in" => state.step_zoom(label, 1),
-                _ => state.step_zoom(label, -1),
-            };
-            match window.set_zoom(factor) {
-                Ok(()) => crate::trace::trace(|| format!("zoom {label} -> {factor}")),
-                Err(error) => crate::trace::trace(|| format!("zoom failed: {error}")),
-            }
-        }
+        // The renderer owns the document's font size; these just tell it which way
+        // to step. `0` means "back to the theme's default", and keeps a font family
+        // the user picked.
+        "view-zoom-in" => emit("editor:step-font", Some("1")),
+        "view-zoom-out" => emit("editor:step-font", Some("-1")),
+        "view-zoom-reset" => emit("editor:step-font", Some("0")),
         "view-file-panel" => emit("toggle-file-panel", None),
         "view-source-mode" => emit("toggle-source-mode", None),
         "view-font-settings" => emit("open-font-settings", None),

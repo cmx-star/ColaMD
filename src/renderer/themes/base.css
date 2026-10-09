@@ -1266,13 +1266,21 @@ body.web-playground *::-webkit-scrollbar-corner {
 /* ===== Editor font preferences (#7752855) =====
    User preference > theme > built-in defaults. Only the editor prose and the
    source editor are overridden; code blocks keep the theme's code font. */
+/* 字体族和字号分开挂类：只调字号时不能带上字体族那条，否则空的 var(--editor-font) 会让
+   font-family 变成无效声明，主题自己的字体被顶掉（2026-10-06 报的）。 */
 body.has-custom-font #editor .cm-content {
   font-family: var(--editor-font) !important;
+}
+
+body.has-custom-font-size #editor .cm-content {
   font-size: var(--editor-font-size, 16px) !important;
 }
 
 body.has-custom-font #source-editor {
   font-family: var(--editor-font) !important;
+}
+
+body.has-custom-font-size #source-editor {
   font-size: var(--editor-font-size, 14px) !important;
 }
 

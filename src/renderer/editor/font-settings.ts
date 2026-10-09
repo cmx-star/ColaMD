@@ -34,19 +34,20 @@ function sanitizeFamily(family: string): string {
   return family.replace(/[{};<>@]/g, '').trim()
 }
 
+// 字体族和字号各管各的，两个类分开挂。
+//
+// 2026-10-06 报「主题的字体改丢了」：⌘+ 只该改字号，却也因此挂上了 has-custom-font，
+// 而那时 --editor-font 是空的，于是 base.css 里那条 `font-family: var(--editor-font)
+// !important` 变成无效声明，把主题自己的字体顶掉了。只调字号就只碰字号。
 export function applyEditorFont(prefs: EditorFontPrefs | null): void {
   const body = document.body
-  if (!prefs || (!prefs.family && !prefs.size)) {
-    body.classList.remove('has-custom-font')
-    body.style.removeProperty('--editor-font')
-    body.style.removeProperty('--editor-font-size')
-    return
-  }
-  body.classList.add('has-custom-font')
-  const family = sanitizeFamily(prefs.family)
+  const family = prefs ? sanitizeFamily(prefs.family) : ''
+  const size = prefs && prefs.size >= 10 && prefs.size <= 40 ? prefs.size : 0
+  body.classList.toggle('has-custom-font', Boolean(family))
+  body.classList.toggle('has-custom-font-size', Boolean(size))
   if (family) body.style.setProperty('--editor-font', family)
   else body.style.removeProperty('--editor-font')
-  if (prefs.size >= 10 && prefs.size <= 40) body.style.setProperty('--editor-font-size', `${prefs.size}px`)
+  if (size) body.style.setProperty('--editor-font-size', `${size}px`)
   else body.style.removeProperty('--editor-font-size')
 }
 
@@ -57,10 +58,39 @@ export function persistEditorFont(prefs: EditorFontPrefs): void {
   window.loomark?.setEditorFont?.(prefs)
 }
 
+// ⌘+ / ⌘- 调的是**正文字号**，不是整页缩放。
+//
+// 整页缩放会把顶栏一起放大，而 macOS 的红绿灯是系统按窗口画的、尺寸不跟着变，放大之后
+// 就不居中了（2026-10-06 报的）。界面保持原尺寸、只让文档跟着变大变小，也更接近
+// 「缩放一篇文章」该有的意思。范围与步进跟字体设置里那个滑块一致。
+const FONT_SIZE_MIN = 10
+const FONT_SIZE_MAX = 40
+
+function currentEditorFontSize(): number {
+  const saved = loadSavedEditorFont()
+  if (saved && saved.size >= FONT_SIZE_MIN && saved.size <= FONT_SIZE_MAX) return saved.size
+  const probe = document.querySelector('#editor .cm-content')
+  const computed = probe ? parseFloat(getComputedStyle(probe).fontSize) : Number.NaN
+  return Number.isFinite(computed) ? Math.round(computed) : 16
+}
+
+export function stepEditorFontSize(delta: number): void {
+  const saved = loadSavedEditorFont() ?? { family: '', size: 0 }
+  const next = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, currentEditorFontSize() + delta))
+  persistEditorFont({ family: saved.family, size: next })
+}
+
 export function clearEditorFont(): void {
   localStorage.removeItem(STORE_KEY)
   applyEditorFont(null)
   window.loomark?.setEditorFont?.({ family: '', size: 0 })
+}
+
+/** ⌘0：只把字号恢复成主题的默认值，用户自己挑过的字体族留着。 */
+export function resetEditorFontSize(): void {
+  const saved = loadSavedEditorFont()
+  if (saved?.family) persistEditorFont({ family: saved.family, size: 0 })
+  else clearEditorFont()
 }
 
 export function showFontSettingsModal(): void {

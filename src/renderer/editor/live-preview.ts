@@ -306,33 +306,18 @@ function exportingCleanly(state: EditorState): boolean {
  * 这样用户点一下就能看到并修改原始语法，不需要精确点到标记上。
  */
 /**
- * 光标所在的那一行算「激活」，这一行会露出源码。
+ * 什么时候把标记的源码露出来：**永远不露**。
  *
- * 只看**空选区**：一旦拉出选区就保持渲染。Typora 与 Obsidian 都是这个规矩
- * （2026-09-26 定的）。按选区露源码的话，全选会让整屏变成 markdown。
+ * 曾经是「光标所在的那一行露源码，方便改标记」（2026-09-26 定的）。2026-10-06 取消：
+ * 渲染模式就该是一篇干净的排版，要改标记直接去源码模式（⌘/）。两个函数留着，是因为
+ * 十来处调用点表达的都是同一件事，改判据只需要动这里。
  */
-function isActiveLine(state: EditorState, pos: number): boolean {
-  if (exportingCleanly(state)) return false
-  if (!editorFocused(state)) return false
-  const line = state.doc.lineAt(pos).number
-  for (const range of state.selection.ranges) {
-    if (!range.empty) continue
-    if (state.doc.lineAt(range.head).number === line) return true
-  }
+function isActiveLine(_state: EditorState, _pos: number): boolean {
   return false
 }
 
 /** 跨行的块（表格、公式、属性区）同理：只有光标落在块里才露出源码。 */
-function isActiveRange(state: EditorState, from: number, to: number): boolean {
-  if (exportingCleanly(state)) return false
-  if (!editorFocused(state)) return false
-  const first = state.doc.lineAt(from).number
-  const last = state.doc.lineAt(to).number
-  for (const range of state.selection.ranges) {
-    if (!range.empty) continue
-    const at = state.doc.lineAt(range.head).number
-    if (at >= first && at <= last) return true
-  }
+function isActiveRange(_state: EditorState, _from: number, _to: number): boolean {
   return false
 }
 

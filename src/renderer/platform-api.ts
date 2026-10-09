@@ -73,6 +73,8 @@ export interface LoomarkApi {
   onMenuImportTheme: (callback: () => void) => void
   onSearch: (callback: () => void) => void
   onFormatCommand: (callback: (id: string) => void) => void
+  /** ⌘+ / ⌘- / ⌘0: 1, -1, or 0 for "back to the theme's default size". */
+  onStepFont: (callback: (delta: number) => void) => void
   readClipboardText: () => Promise<string>
   onSiblingsChanged: (callback: (files: SiblingFile[]) => void) => void
   onToggleFilePanel: (callback: () => void) => void

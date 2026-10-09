@@ -236,6 +236,11 @@ export function createTauriApi(): LoomarkApi {
     },
     onSearch: (callback) => on<void>('editor:search', () => callback()),
     onFormatCommand: (callback) => on<string>('editor:format', callback),
+    // The menu sends the step as a string ("1", "-1", "0"); the renderer wants a number.
+    onStepFont: (callback) => on<string>('editor:step-font', (raw) => {
+      const delta = Number.parseInt(raw, 10)
+      if (Number.isFinite(delta)) callback(delta)
+    }),
     onToggleFilePanel: (callback) => on<void>('toggle-file-panel', () => callback()),
     onToggleSourceMode: (callback) => on<void>('toggle-source-mode', () => callback()),
     onEditorFontChanged: (callback) => on<{ family: string; size: number }>('editor-font-changed', callback),
