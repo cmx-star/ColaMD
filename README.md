@@ -6,12 +6,12 @@
 
 loomark is an open-source, free, elegant Markdown editor for writing, notes, and documentation. It is built for people who just want to write: no toolbars, no status bar, nothing to configure: just your text and a file list, with a tab strip only when you open a second document.
 
-It offers true WYSIWYG editing, 12 built-in themes, rich-text copy, smart line breaks, search and replace, a document outline, PDF / HTML / Word export, and support for macOS, Windows, and Linux.
+It offers true WYSIWYG editing, 4 built-in themes with custom-theme import, rich-text copy, smart line breaks, search and replace, a document outline, PDF / HTML / Word export, and support for macOS, Windows, and Linux.
 
 Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or another editor), loomark shows the new content right away. No reopening, no manual refresh.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/release/marswaveai/colamd.svg)](https://github.com/marswaveai/colamd/releases)
+[![GitHub release](https://img.shields.io/github/release/cmx-star/ColaMD.svg)](https://github.com/cmx-star/ColaMD/releases)
 
 [Download](#download) | [Features](#features)
 
@@ -28,7 +28,7 @@ Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or
 
 ## Themes
 
-Twelve built-in themes, six light, six dark, inspired by Bear, Notion, iA Writer, Kindle, Solarized, Nord, Gruvbox, and Dracula. Every one of them is also a standalone CSS file in [`themes/`](themes/), with a guide to [writing your own](themes/README.md).
+Four built-in themes — Light, Sepia, Solarized Dark and Nord. The [`themes/`](themes/) folder also ships more styles (Bear, Notion, iA Writer, Gruvbox, Dracula and friends) that you can import as custom themes, with a guide to [writing your own](themes/README.md).
 
 <p align="center">
   <img src="docs/images/theme-swatches.svg" alt="loomark themes" width="92%">
@@ -46,7 +46,7 @@ Twelve built-in themes, six light, six dark, inspired by Bear, Notion, iA Writer
 - **Search & Replace**: Find anything in the current document with ⌘/Ctrl+F, then replace the current match or all matches.
 - **Smart Line Breaks**: Single newlines render as line breaks, matching how people and AI tools write Markdown.
 - **Rich Text Copy**: Copy content with formatting preserved into WeChat, email, and other rich-text editors.
-- **Themes**: Twelve built-in themes for focused writing in light or dark environments.
+- **Themes**: Four built-in themes (Light, Sepia, Solarized Dark, Nord), plus custom themes you import from any CSS file.
 - **Recent Files & Session Restore**: Jump back to the last 10 documents from the File menu, and reopen where you left off at launch.
 - **Editor Font Settings**: Pick any installed system font and size for the editor; your choice wins over theme defaults.
 - **Multiple Windows**: Independent editor windows, each with its own save queue and close protection.
@@ -56,7 +56,6 @@ Twelve built-in themes, six light, six dark, inspired by Bear, Notion, iA Writer
 - **PDF, HTML & Word Export**: Turn your Markdown document into a themed PDF, self-contained HTML, or editable Word document.
 - **Image Export**: Share Markdown as one continuous PNG at the desktop or mobile reading width; longer documents continue as numbered pages.
 - **Portable Image Paths**: Local images use safe `file://` URLs for display and return to relative paths when saved.
-- **VS Code Integration**: Open the current Markdown file in loomark directly from VS Code.
 - **Minimal by Design**: No toolbar, no permanent sidebar, no distractions.
 - **Cross-Platform**: Available for macOS, Windows, and Linux.
 
@@ -66,7 +65,7 @@ loomark does not ask you to change your habits. It works well alongside Obsidian
 
 ## Download
 
-> Check [Releases](https://github.com/marswaveai/colamd/releases) for the latest builds.
+> Check [Releases](https://github.com/cmx-star/ColaMD/releases) for the latest builds.
 
 | Platform | Format |
 |----------|--------|
@@ -95,8 +94,8 @@ loomark will keep growing as a focused, free Markdown editor:
 - v2.0.0: 1000-star release: Mermaid diagrams return with luminance-aware colors, recent files & session restore, editor font settings, heading anchors, multiple windows, and a save status hint
 - v2.0.1: Universal macOS build for Apple silicon and Intel Macs, plus custom-theme restoration, Mermaid render recovery, and Windows updater fixes
 - v2.0.2: Resizable file panel (180–420px, remembered) and an outline progress view that highlights the current heading and flashes the landing point after a jump
-- v2.3.0: Folders expand in place in the file list, one root and downward, so nested documents are one click away. Plus a round of shell tightening: the tab strip starts on the panel's edge line, resizing the panel lights up the divider itself, long names in the list appear as a hover label instead of scrolling past the icon, and the title-bar controls express state through weight instead of boxes
 - v2.8.0: The app is renamed loomark, after loom and mark: the documents are the threads, the editor weaves them. Name, menus, window titles, bundle name and icon all change, and the settings folder moves from `~/.colamd` to `~/.loomark` (the two do not share state, so preferences start from their defaults again). The file list gives folders and Markdown files colour icons from Material Icon Theme
+- v2.8.1: Export hardened: PDF page breaks avoid tables, formulas, diagrams and images; long documents render page-by-page instead of failing on the canvas limit; and an export progress indicator appears for slow exports
 - v2.7.0: The editor core is rewritten around a single rule: the editor holds the file's bytes, and rendering is a layer drawn on top of them. Characters you never touched can no longer change on save (table delimiter rows and `*`, `$`, `_` used to come back rewritten), long documents export whole instead of one screenful, and images, links, footnotes, inline HTML, Mermaid diagrams, code highlighting, copy buttons and list continuation are all back on the new core
 - v2.6.0: Mermaid diagrams are drawn into exported Word documents (rendered light, because Word is a white page), the reading column has three widths in View → Text Width (640 / 780 / 1080, honoured by source mode and by the HTML and PDF exports), unsaved work is copied to `~/.loomark/recovered` before it is discarded, and the tab close button answers a 24×24 target while staying 16×16 on screen
 - v2.5.0: The document becomes a slideshow (View → Play Slideshow, ⌘⇧P): one `---` per page, full screen, starting at your caret, with the theme's typography, tables, formulas and diagrams on every slide. The same deck exports as a 16:9 PDF. Empty lines you type are written as blank lines instead of `<br />` tags, and a mixed `---`/`***` document keeps the rule marker it mostly uses
@@ -105,6 +104,7 @@ loomark will keep growing as a focused, free Markdown editor:
 - v2.4.2: Windows refinements to the one row: the system's window buttons are drawn in the row icons' grey instead of the document's ink, and the menu button moves to the row's left end with even spacing on both sides
 - v2.4.1: Full screen stops reserving room for traffic lights that are not there; Windows gets a shell of one row instead of three stacked bars, with the menu as the row's fourth icon; the shell's focus ring follows the theme instead of the system accent; the Window menu speaks the interface language; and a new tab is ready to type in
 - v2.4.0: The top row rebuilt. The left belongs to the document and the right is one column, with the file panel docked under the three controls that open it. Tabs fill the row as full-height columns and never collapse below twice the row height; every seam in the shell is one opaque hairline; the new-tab button keeps its place when the row fills up; and the panel shortcut is now `⌘\`
+- v2.3.0: Folders expand in place in the file list, one root and downward, so nested documents are one click away. Plus a round of shell tightening: the tab strip starts on the panel's edge line, resizing the panel lights up the divider itself, long names in the list appear as a hover label instead of scrolling past the icon, and the title-bar controls express state through weight instead of boxes
 - v2.2.0: One top row: the tab strip is always there and a single document is a tab too. Opened files land as tabs instead of new windows, the window remembers its size and zoom, PDF export gets page margins painted with the theme, plus a Format submenu, footnote hover previews, and colours that follow the theme everywhere
 - v2.1.2: A quieter tab strip: the first tab sits flush with the window edge, and the theme colour line on the active tab is gone. The editor is a canvas, the shell stays out of the way
 - v2.1.1: Tabs get their plus back, at the end of the tab strip; a right-click menu on tabs (close, close others, close to the right, copy path, reveal); and a quieter hover hint that waits a second and shows only the shortcut
