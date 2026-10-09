@@ -19,30 +19,30 @@
   --highlight-bg: #fdecc8;
 }
 
-#editor .ProseMirror a {
+#editor .cm-content .cm-md-link {
   text-decoration: underline;
   text-decoration-color: #9b9a97;
   text-underline-offset: 2px;
 }
 
-#editor .ProseMirror a:hover {
+#editor .cm-content .cm-md-link:hover {
   text-decoration-color: #37352f;
 }
 
-#editor .ProseMirror h1,
-#editor .ProseMirror h2 {
+#editor .cm-content .cm-md-atxheading1,
+#editor .cm-content .cm-md-atxheading2 {
   border-bottom: none;
   padding-bottom: 0;
   font-weight: 700;
 }
 
-#editor .ProseMirror code {
+#editor .cm-content .cm-md-inlinecode {
   color: #eb5757;
   background: #f7f6f3;
 }
 
-#editor .ProseMirror table th,
-#editor .ProseMirror table td {
+#editor .cm-content .cm-md-table-widget th,
+#editor .cm-content .cm-md-table-widget td {
   border-left: none;
   border-right: none;
 }

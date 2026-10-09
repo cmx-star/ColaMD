@@ -438,6 +438,22 @@
 }
 
 /*
+ * 选中文字的底色按主题走。
+ *
+ * 必须用带 id 的选择器，两个类的写法压不住 baseTheme：CodeMirror 自己给选区钉了
+ * `.ͼX.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`（四个类），
+ * 底色按 `&light` / `&dark` 分岔（light 那支是不透明的浅紫 #d7d4f0，dark 那支是 #233）。
+ * 我们从没告诉过 CodeMirror 应用切到深色主题了，于是深色主题下也走 light 那一支，
+ * 浅紫盖在近白色的文字上。实测深色主题里选中文字与底色带的对比度只剩 1.01～1.35，
+ * 看起来就是「字被盖住了」（2026-10-04 报的）。
+ *
+ * 变量在主题里定义（--selection-bg 是半透明的），所以中深两套都跟着主题走。
+ */
+#editor .cm-scroller .cm-selectionLayer .cm-selectionBackground {
+  background: var(--selection-bg, color-mix(in srgb, var(--text-color) 18%, transparent));
+}
+
+/*
  * 导出时把编辑器自身的痕迹收起来。
  *
  * 导出的是一篇文档，不是编辑器此刻的样子：光标、选区、以及文件开头那段 YAML 元数据

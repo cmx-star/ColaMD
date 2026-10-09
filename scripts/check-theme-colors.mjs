@@ -187,7 +187,7 @@ assert.equal(values_partial['text-color'], values_default['text-color'])
 assert.equal(values_partial['border-color'], values_default['border-color'])
 
 const values_direct = getCustomTheme(`
-#editor .ProseMirror strong {
+#editor .cm-content .cm-md-strong {
 	color: #c44b2b;
 }
 `)

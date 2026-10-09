@@ -1,0 +1,76 @@
+/* ===== ColaMD Theme Template: 自定义主题模板 =====
+
+   复制这一份改就是了：改文件名、改配色、改字体，然后 Theme > Import Theme
+   导入，或者放进 ~/.colamd/themes/。
+
+   两件事先说清楚：
+
+   1. 变量写在 :root 里。没写的变量会继承 Light 主题的默认值，所以只想改配色的话，
+      下面这一段往往就够了，选择器那一段可以整段删掉。
+   2. 选择器写错不会报错，只是**不生效**。仓库里 `npm run verify:themes` 会逐条检查
+      「这条规则命中到真实元素了吗、真的改变了样式吗」，自己加规则时可以用它兜底。
+      可用的钩子（`.cm-md-atxheading1`、`.cm-md-strong` 这些）在 themes/README.md 里
+      有一张表。
+
+   这一份故意不是一套好看的配色，它是**照着改的起点**。 */
+
+:root {
+  --bg-color: #f7f9fb;             /* 正文底色 */
+  --text-color: #1f2a33;           /* 正文字色 */
+  --text-secondary: #5b6b78;       /* 次级文字：引用块、标签 */
+  --text-muted: #8896a1;           /* 压淡的文字与图标：行号、链接地址、列表圆点 */
+  --border-color: #dbe3ea;         /* 分隔线、表格边框、面板描边 */
+  --link-color: #2f6f9f;           /* 链接、搜索高亮 */
+  --code-bg: rgba(47, 111, 159, 0.09);   /* 行内代码底色 */
+  --code-block-bg: #1f2a33;        /* 代码块底色：明暗决定语法着色用哪一套 */
+  --code-block-text: #e6edf3;      /* 代码块文字（底色是深色时用得上） */
+  --blockquote-border: #9dc0d8;    /* 引用块左边那条竖线 */
+  --blockquote-bg: rgba(47, 111, 159, 0.05);  /* 引用块底色，transparent 就是不要底 */
+  --table-header-bg: #eef3f7;      /* 表头底色 */
+  --selection-bg: rgba(47, 111, 159, 0.18);   /* 选中背景 */
+  --highlight-bg: #fff2b8;         /* ==高亮== 的底色 */
+}
+
+/* ---- 选择器：比变量更细的那一层 ----
+   编辑器里存的是文件的文字，格式是画在上面的一层，所以没有 <h1>、<blockquote>
+   这种元素可选。标题是一「行」带一个类，引用是每一行一个 div，加粗是一个 span。 */
+
+/* 正文字体与行高。不写就用主题默认的那套。 */
+#editor .cm-content {
+  font-family: Georgia, 'Songti SC', serif;
+  line-height: 1.85;
+}
+
+/* 标题色。只要一级二级就这样写，三级往下照抄类名即可。 */
+#editor .cm-content .cm-md-atxheading1,
+#editor .cm-content .cm-md-atxheading2 {
+  color: #1b4f72;
+}
+
+/* 加粗与行内代码。这两个是最常调的两笔颜色。 */
+#editor .cm-content .cm-md-strong {
+  color: #2f6f9f;
+}
+
+#editor .cm-content .cm-md-inlinecode {
+  color: #b0543a;
+}
+
+/* 引用块。
+   注意：引用和代码块在编辑器里是**一行一个 div**，不是包住整块的一个盒子。
+   所以纵向内边距会每一行加一遍，看上去会散架。要留呼吸感只给左右。 */
+#editor .cm-content .cm-md-blockquote {
+  background: rgba(47, 111, 159, 0.05);
+  padding-left: 20px;
+  padding-right: 16px;
+}
+
+/* 表格表头：一条比边框重的下划线。单元格是 .cm-md-table-widget 里的 th / td。 */
+#editor .cm-content .cm-md-table-widget th {
+  border-bottom: 2px solid #9dc0d8;
+}
+
+/* 分隔线。让它跟着强调色走，而不是跟着 --border-color。 */
+#editor .cm-content .cm-md-hr {
+  border-top-color: #9dc0d8;
+}

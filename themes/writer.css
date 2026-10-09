@@ -19,26 +19,26 @@
   --highlight-bg: #fff3a3;
 }
 
-#editor .ProseMirror {
+#editor .cm-content {
   font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, 'PingFang SC', 'Noto Sans SC', monospace;
   font-size: 15px;
   line-height: 1.8;
 }
 
-#editor .ProseMirror h1,
-#editor .ProseMirror h2,
-#editor .ProseMirror h3 {
+#editor .cm-content .cm-md-atxheading1,
+#editor .cm-content .cm-md-atxheading2,
+#editor .cm-content .cm-md-atxheading3 {
   font-weight: 700;
   border-bottom: none;
   padding-bottom: 0;
 }
 
-#editor .ProseMirror blockquote {
+#editor .cm-content .cm-md-blockquote {
   border-left-width: 3px;
   font-style: normal;
 }
 
-#editor .ProseMirror table th,
-#editor .ProseMirror table td {
+#editor .cm-content .cm-md-table-widget th,
+#editor .cm-content .cm-md-table-widget td {
   font-size: 0.9em;
 }

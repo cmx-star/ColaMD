@@ -20,26 +20,29 @@
   --highlight-bg: #f2dfa8;
 }
 
-#editor .ProseMirror {
+#editor .cm-content {
   font-family: Georgia, 'Source Han Serif SC', 'Noto Serif SC', 'Songti SC', serif;
   line-height: 1.85;
 }
 
-#editor .ProseMirror h1 {
+#editor .cm-content .cm-md-atxheading1 {
   text-align: center;
   border-bottom: none;
   letter-spacing: 0.02em;
 }
 
-#editor .ProseMirror h2 {
+#editor .cm-content .cm-md-atxheading2 {
   border-bottom-style: dashed;
 }
 
-#editor .ProseMirror blockquote {
+#editor .cm-content .cm-md-blockquote {
   background: var(--blockquote-bg);
-  padding: 14px 20px 14px 24px;
+  /* Horizontal only: a quote is one div per line in the editor, so vertical
+     padding would be added once for every line of the quote. */
+  padding-left: 24px;
+  padding-right: 20px;
 }
 
-#editor .ProseMirror code {
+#editor .cm-content .cm-md-inlinecode {
   color: #7a5a33;
 }

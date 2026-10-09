@@ -56,9 +56,10 @@ export const editorTheme = EditorView.theme({
      一旦在这里写 padding，引用块、列表、代码块的内边距会被整片吃掉（实测全为 0px）。
      归零与块级内边距都写在 editor-preview.css 里，用同样两个类的选择器，靠文件顺序决胜。 */
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--text-color)' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
-    backgroundColor: 'var(--selection-bg, color-mix(in srgb, var(--text-color) 18%, transparent))',
-  },
+  /* 选中色只在这里管原生选区。真正画出来的那条色带（.cm-selectionBackground）写在
+     themes/editor-preview.css：baseTheme 给它的选择器有四个类，这里写不进去；
+     同优先级时 baseTheme 总在后面。 */
+  '::selection': { backgroundColor: 'var(--selection-bg, color-mix(in srgb, var(--text-color) 18%, transparent))' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-selectionMatch': { backgroundColor: 'var(--chrome-bg-hover, color-mix(in srgb, var(--text-color) 14%, transparent))' },
   '.cm-searchMatch': { backgroundColor: 'var(--search-match-bg, color-mix(in srgb, var(--text-color) 16%, transparent))' },

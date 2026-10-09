@@ -19,16 +19,13 @@
   --highlight-bg: rgba(255, 214, 10, 0.25);
 }
 
-#editor .ProseMirror h1,
-#editor .ProseMirror h2,
-#editor .ProseMirror h3 {
+#editor .cm-content .cm-md-atxheading1,
+#editor .cm-content .cm-md-atxheading2,
+#editor .cm-content .cm-md-atxheading3 {
   color: #f5f5f5;
 }
 
-#editor .ProseMirror blockquote {
+#editor .cm-content .cm-md-blockquote {
   color: #9a9a9a;
 }
 
-#editor .ProseMirror hr {
-  border-top-width: 1px;
-}

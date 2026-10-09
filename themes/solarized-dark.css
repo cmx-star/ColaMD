@@ -19,17 +19,17 @@
   --highlight-bg: rgba(181, 137, 0, 0.3);
 }
 
-#editor .ProseMirror h1,
-#editor .ProseMirror h2,
-#editor .ProseMirror h3,
-#editor .ProseMirror h4 {
+#editor .cm-content .cm-md-atxheading1,
+#editor .cm-content .cm-md-atxheading2,
+#editor .cm-content .cm-md-atxheading3,
+#editor .cm-content .cm-md-atxheading4 {
   color: #93a1a1;
 }
 
-#editor .ProseMirror strong {
+#editor .cm-content .cm-md-strong {
   color: #cb4b16;
 }
 
-#editor .ProseMirror code {
+#editor .cm-content .cm-md-inlinecode {
   color: #2aa198;
 }

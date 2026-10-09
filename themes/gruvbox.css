@@ -19,24 +19,24 @@
   --highlight-bg: rgba(250, 189, 47, 0.22);
 }
 
-#editor .ProseMirror h1,
-#editor .ProseMirror h2,
-#editor .ProseMirror h3 {
+#editor .cm-content .cm-md-atxheading1,
+#editor .cm-content .cm-md-atxheading2,
+#editor .cm-content .cm-md-atxheading3 {
   color: #fbf1c7;
 }
 
-#editor .ProseMirror strong {
+#editor .cm-content .cm-md-strong {
   color: #fe8019;
 }
 
-#editor .ProseMirror code {
+#editor .cm-content .cm-md-inlinecode {
   color: #b8bb26;
 }
 
-#editor .ProseMirror blockquote {
+#editor .cm-content .cm-md-blockquote {
   color: #bdae93;
 }
 
-#editor .ProseMirror hr {
+#editor .cm-content .cm-md-hr {
   border-top-color: #504945;
 }

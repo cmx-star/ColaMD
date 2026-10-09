@@ -22,37 +22,32 @@
   --highlight-bg: #f0d9a8;
 }
 
-#editor .ProseMirror {
+#editor .cm-content {
   font-family: 'LXGW WenKai', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', Georgia, serif;
   line-height: 1.9;
 }
 
-#editor .ProseMirror strong {
+#editor .cm-content .cm-md-strong {
   color: #c44b2b;
 }
 
-#editor .ProseMirror code {
+#editor .cm-content .cm-md-inlinecode {
   color: #c44b2b;
 }
 
-#editor .ProseMirror pre {
-  color: var(--code-block-text);
-}
-
-#editor .ProseMirror pre code {
-  color: inherit;
-}
-
-#editor .ProseMirror blockquote {
+#editor .cm-content .cm-md-blockquote {
   background: var(--blockquote-bg);
-  padding: 15px 20px 15px 25px;
+  /* Horizontal only: a quote is one div per line in the editor, so vertical
+     padding would be added once for every line of the quote. */
+  padding-left: 25px;
+  padding-right: 20px;
 }
 
-#editor .ProseMirror table th {
+#editor .cm-content .cm-md-table-widget th {
   border-bottom: 2px solid #c44b2b;
 }
 
-#editor .ProseMirror table td {
+#editor .cm-content .cm-md-table-widget td {
   border-left: none;
   border-right: none;
 }

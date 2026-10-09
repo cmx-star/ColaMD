@@ -20,19 +20,19 @@
   --highlight-bg: #ffe9a8;
 }
 
-#editor .ProseMirror strong {
+#editor .cm-content .cm-md-strong {
   color: #d43d2a;
 }
 
-#editor .ProseMirror code {
+#editor .cm-content .cm-md-inlinecode {
   color: #d43d2a;
 }
 
-#editor .ProseMirror h1 {
+#editor .cm-content .cm-md-atxheading1 {
   letter-spacing: -0.01em;
 }
 
-#editor .ProseMirror hr {
+#editor .cm-content .cm-md-hr {
   border-top-color: #d43d2a;
   opacity: 0.35;
 }
