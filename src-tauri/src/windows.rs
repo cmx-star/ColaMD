@@ -65,6 +65,13 @@ pub fn open_document(app: &AppHandle, window: Option<tauri::WebviewWindow>, path
     };
     let ctx = app.state::<crate::commands::AppCtx>();
     let has_file = ctx.doc(window.label()).lock().expect("doc lock").file_path.is_some();
+    crate::trace::trace(|| {
+        format!(
+            "open_document: window {} has_file={has_file}, path={}",
+            window.label(),
+            path.display()
+        )
+    });
     if has_file {
         let _ = window.emit("open-in-new-tab", path.to_string_lossy().to_string());
         return;

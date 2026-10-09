@@ -816,6 +816,11 @@ pub async fn renderer_ready(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>
     trace(|| format!("renderer ready (fullscreen={fullscreen})"));
     let _ = window.emit("fullscreen-changed", fullscreen);
 
+    window
+        .app_handle()
+        .state::<crate::ReadyWindows>()
+        .mark_ready(window.label());
+
     hand_over_verify_probe(&window);
 
     let queued = startup.drain();

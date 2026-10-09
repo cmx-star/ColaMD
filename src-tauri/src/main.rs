@@ -129,6 +129,24 @@ impl StartupFiles {
     }
 }
 
+/// Which windows have reported readiness. A document that arrives before that (from
+/// the Finder, or from a launch argument) has to wait, because the renderer only
+/// starts listening at the end of its init.
+#[derive(Default)]
+pub struct ReadyWindows {
+    ready: Mutex<std::collections::HashSet<String>>,
+}
+
+impl ReadyWindows {
+    pub fn mark_ready(&self, label: &str) {
+        self.ready.lock().expect("ready set").insert(label.to_string());
+    }
+
+    pub fn is_ready(&self, label: &str) -> bool {
+        self.ready.lock().expect("ready set").contains(label)
+    }
+}
+
 /// A path from the command line, if there is one that exists.
 fn path_from_args() -> Option<PathBuf> {
     std::env::args()
@@ -161,6 +179,7 @@ fn main() {
         }))
         .manage(commands::AppCtx::default())
         .manage(StartupFiles::default())
+        .manage(ReadyWindows::default())
         .manage(MenuState::default())
         .invoke_handler(tauri::generate_handler![
             commands::open_file,
@@ -218,6 +237,46 @@ fn main() {
                 });
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running ColaMD");
+        .build(tauri::generate_context!())
+        .expect("error while building ColaMD")
+        .run(|app, event| handle_run_event(app, event));
+}
+
+/// macOS 把「用本应用打开这个文件」作为 Apple Event 交给应用，Tauri 把它抛成
+/// [`tauri::RunEvent::Opened`]，参数不在 argv 里。
+///
+/// 也就是说：Finder 双击 .md、拖到 Dock 图标、文件关联，走的都是这里，而不是
+/// `path_from_args()`。少了这一条，那些入口打开的文件根本不会出现在窗口里
+/// （2026-10-09 发现）。
+fn handle_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
+    #[cfg(target_os = "macos")]
+    {
+        if let tauri::RunEvent::Opened { urls } = &event {
+            for url in urls {
+                let Ok(path) = url.to_file_path() else {
+                    crate::trace::trace(|| format!("opened url is not a file path: {url}"));
+                    continue;
+                };
+                // The Finder can hand a document over before the renderer is ready,
+                // and an event nobody is listening for is a document that never
+                // appears. Queue it for the window that is still starting up.
+                let target = app
+                    .webview_windows()
+                    .into_values()
+                    .find(|window| window.is_focused().unwrap_or(false))
+                    .or_else(|| app.get_webview_window("main"));
+                let ready = app.state::<ReadyWindows>();
+                match target {
+                    Some(window) if ready.is_ready(window.label()) => {
+                        crate::windows::open_document(app, Some(window), path);
+                    }
+                    _ => {
+                        crate::trace::trace(|| format!("queued {} until the renderer is ready", path.display()));
+                        app.state::<StartupFiles>().push(path);
+                    }
+                }
+            }
+        }
+    }
+    let _ = (app, event);
 }
