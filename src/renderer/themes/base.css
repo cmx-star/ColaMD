@@ -32,6 +32,20 @@ body.show-file-panel {
   --panel-column: var(--file-panel-width, 220px);
 }
 
+/* 正文要避开的那一列。默认两边都是 0，面板显示时才有一边非零，
+   这样下面每条表达式都不用再判断面板开没开。 */
+body {
+  --panel-inset-left: 0px;
+  --panel-inset-right: 0px;
+}
+
+/* 面板是一列浮在窗口上的纸（position: fixed），它不占布局，所以避让只能自己写：
+   右停靠让右边，左停靠让左边（#143）。同一对值同时给渲染模式与源码模式用，
+   两边正文于是永远落在同一块可见区域里，切换模式时文字不会横向跳（#48）。 */
+body.show-file-panel {
+  --panel-inset-right: var(--file-panel-width, 220px);
+}
+
 body {
   /* One chrome colour for the single top row. These MUST live on body, never
      on :root: the themes override --bg-color/--text-color on body.theme-*, and
@@ -488,29 +502,33 @@ body.platform-win #titlebar {
   position: relative; /* anchor for the absolutely-positioned code copy button */
   height: calc(100vh - var(--chrome-row-height) - var(--tab-bar-height, 0px));
   overflow-y: auto;
-  /* 这里不再有内边距。正文那 40px 呼吸留白搬到 .cm-content 上（见 themes/editor-preview.css），
+  /* 正常情况没有内边距。正文那 40px 呼吸留白搬到 .cm-content 上（见 themes/editor-preview.css），
      两个理由都是看得见的：
        1. CodeMirror 的滚动容器是 .cm-scroller，它在 #editor 的内边距之内。旧版（Milkdown）
           滚动发生在 #editor 自己身上，滚动条贴窗口右缘；留着这 40px，滚动条就会缩进 40px，
           浮在留白中间。
        2. 内边距留在外层，限宽就只能靠 max-width，而 .cm-content 是 flex 子项、
           baseTheme 给了它 flex-grow: 2，剩余空间被它先吃掉，自动外边距吸不到东西，
-          正文会左对齐（实测窗口 1623px、正文 640px 贴左边）。 */
-  padding: 0;
+          正文会左对齐（实测窗口 1623px、正文 640px 贴左边）。
+     唯一一处例外是面板那一列（#143）：它是两三百像素的让位，不是呼吸留白。那点宽度要么
+     让 #editor 留出来（滚动条落在面板边缘），要么就让正文和滚动条一起待在面板底下。
+     正文仍然靠 .cm-content 的自动外边距在剩下的宽度里居中，flex: 0 0 auto 保证它吸得到空间。 */
+  padding: 0 var(--panel-inset-right, 0px) 0 var(--panel-inset-left, 0px);
 }
 
 #source-editor {
   display: none;
   height: calc(100vh - var(--chrome-row-height) - var(--tab-bar-height, 0px));
   width: 100%;
-  /* 跟视觉模式同一个阅读列宽，切模式时文字不会跳位置（#48）。
-     用 max-width + 自动外边距居中，**不用内边距算**：内边距里的百分比是按
-     **父容器**宽度解析的，不是元素自己的宽度。面板打开时元素是 `100% - 220px`，
-     父容器仍是整窗，公式会多算出 110px 的内边距，正文只剩 420 宽（实测），
-     跟视觉模式的 640 对不上。max-width 没有这个歧义。 */
-  max-width: calc(var(--editor-column-width) + 80px);
+  /* 跟渲染模式同一个阅读列宽，切模式时文字不会跳位置（#48），并且跟它落在
+     同一块可见区域里（#143）。
+     居中还是用 max-width + 自动外边距，不用内边距算：内边距里的百分比是按
+     **父容器**宽度解析的，不是元素自己的宽度，公式会算错（实测过）。 */
+  max-width: calc(var(--editor-column-width) + 80px + var(--panel-inset-left, 0px) + var(--panel-inset-right, 0px));
   margin: 0 auto;
-  padding: calc(40px + var(--editor-top-gap, 0px)) 40px;
+  /* 面板那一列算进内边距：盒子按「列宽 + 两侧让位」居中，正文于是落在可见
+     区域中间，而不是整窗中间。面板在右时这两者差 110px，看得出来（实测）。 */
+  padding: calc(40px + var(--editor-top-gap, 0px)) calc(40px + var(--panel-inset-right, 0px)) 40px calc(40px + var(--panel-inset-left, 0px));
   box-sizing: border-box;
   border: none;
   outline: none;
@@ -606,6 +624,8 @@ body.panel-left #panel-resizer {
 
 body.panel-left.show-file-panel {
   --panel-column: 0px;
+  --panel-inset-left: var(--file-panel-width, 220px);
+  --panel-inset-right: 0px;
 }
 
 /* The button cannot follow the panel to the left end (it stays where it has
@@ -846,23 +866,9 @@ body.panel-resizing {
   margin-bottom: 4px;
 }
 
-body.show-file-panel #editor,
-body.show-file-panel #source-editor {
-  margin-right: var(--file-panel-width, 220px);
-}
-
-/* The mirror of that margin, for the side the panel is on. */
-body.panel-left.show-file-panel #editor,
-body.panel-left.show-file-panel #source-editor {
-  margin-right: 0;
-  margin-left: var(--file-panel-width, 220px);
-}
-
-/* The source editor has an explicit width, so account for the panel margin
-   instead of extending past the viewport when both are visible. */
-body.show-file-panel #source-editor {
-  width: calc(100% - var(--file-panel-width, 220px));
-}
+/* 面板那一列不再靠 #editor 自己的 margin 让开了。让位做在上面那对
+   --panel-inset-* 变量上：margin 会把滚动条一起推到面板底下藏起来，而内边距让
+   滚动条停在面板边缘（#143）。源码模式的宽度也不用再减一次，同一对变量已经算进去了。 */
 
 #editor.hidden {
   display: none;

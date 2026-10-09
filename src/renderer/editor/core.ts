@@ -15,7 +15,7 @@ import { undo, redo } from '@codemirror/commands'
 import { livePreview, setEditorFocus } from './live-preview'
 import { listInput } from './list-input'
 import { searchHighlightField } from './search-highlight'
-import { stateExtensions, editableCompartment } from './state'
+import { stateExtensions, editableCompartment, bodyStart } from './state'
 import { editorTheme } from './source-theme'
 
 export interface EditorOptions {
@@ -113,9 +113,10 @@ export function createEditorCore(parent: HTMLElement, options: EditorOptions = {
 
     setText(text: string, clearHistory = false): void {
       if (view.state.doc.toString() === text) return
-      // 换文件时必须把撤销栈清掉，否则撤销会跨文档串味。
+      // 换文件时必须把撤销栈清掉，否则撤销会跨文档串味。光标也要落到正文开头：
+      // 属性区是收起来的，停在它里面敲出来的字会看不见（见 state.ts 的 bodyStart）。
       const next = clearHistory
-        ? EditorState.create({ doc: text, extensions: extension })
+        ? EditorState.create({ doc: text, selection: { anchor: bodyStart(text) }, extensions: extension })
         : view.state.update({ changes: { from: 0, to: view.state.doc.length, insert: text } }).state
       view.setState(next)
     },
@@ -147,4 +148,4 @@ export function createEditorCore(parent: HTMLElement, options: EditorOptions = {
   return api
 }
 
-export { createState } from './state'
+export { createState, bodyStart } from './state'

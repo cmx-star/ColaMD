@@ -281,19 +281,23 @@ function installEditorInteractions(root: HTMLElement, view: EditorView): void {
     })
   })
 
-  // 点击公式：把光标放进这段公式的源码里，就地改。
+  // 点一下被替换掉的块（公式、图片、表格、图、HTML），把光标放进它的源码里就地改。
   //
-  // 曾经点一下弹一个编辑框，框里还得再填一次公式（而且填的是空白的，用户得自己把
-  // 原来那行删掉）。公式本来就是几行文字，光标进去就能改，不需要第二个地方放它。
+  // 曾经只有公式有这么一条路，而且点一下会弹一个编辑框，框里还得再填一次公式（而且填的
+  // 是空白的）。公式本来就是几行文字，光标进去就能改，不需要第二个地方放它。
+  // #138 报上来：换内核之后表格、图、图片都点不进去了，而 2.6 是可以改的。
+  // 现在每个替换块都带着自己的源码区间（见 live-preview 的 withSourceRange），
+  // 一个处理器管全部。
   root.addEventListener('click', (e) => {
-    const widget = (e.target as HTMLElement).closest('.cm-md-math')
+    const widget = (e.target as HTMLElement).closest('[data-source-from]') as HTMLElement | null
     if (!widget) return
-    // 公式在缓冲区里的区间由 widget 自己带出来
-    const from = Number(widget.getAttribute('data-math-from'))
-    const to = Number(widget.getAttribute('data-math-to'))
+    const from = Number(widget.dataset.sourceFrom)
+    const to = Number(widget.dataset.sourceTo)
     if (!Number.isFinite(from) || !Number.isFinite(to)) return
     e.preventDefault()
-    view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true })
+    // 光标放在这一段的开头，**不要**选中整段：露不露源码的判据是「有没有一个空光标落在
+    // 这一段里」（见 live-preview 的 isActiveRange），拉出选区反而会让它继续藏着。
+    view.dispatch({ selection: { anchor: from }, scrollIntoView: true })
     view.focus()
   })
 }

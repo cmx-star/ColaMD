@@ -1057,12 +1057,28 @@ interface OutlineItem {
 }
 
 function sourceOutline(content: string): OutlineItem[] {
-  return content.split(/\r?\n/).flatMap((line, index) => {
+  const items: OutlineItem[] = []
+  // 代码围栏里的 `#` 是注释，不是标题（#137：Python、shell、YAML 的注释都进过大纲）。
+  // 记一下当前在不在围栏里，以及是哪种围栏、多长：```` 开头的块里出现 ``` 不算闭合。
+  let fence: { char: string; length: number } | null = null
+  content.split(/\r?\n/).forEach((line, index) => {
+    const fenceMatch = /^\s{0,3}(`{3,}|~{3,})/.exec(line)
+    if (fenceMatch) {
+      const marker = fenceMatch[1]
+      if (!fence) {
+        fence = { char: marker[0], length: marker.length }
+      } else if (marker[0] === fence.char && marker.length >= fence.length) {
+        fence = null
+      }
+      return
+    }
+    if (fence) return
     const match = /^(#{1,6})\s+(.+?)(?:\s+#+)?\s*$/.exec(line)
-    if (!match) return []
+    if (!match) return
     const title = match[2].replace(/!?(?:\[([^\]]*)\])\([^)]*\)/g, '$1').replace(/[*_`]/g, '').trim()
-    return title ? [{ level: match[1].length, title, line: index }] : []
+    if (title) items.push({ level: match[1].length, title, line: index })
   })
+  return items
 }
 
 // 大纲从源码文本里读，不从渲染后的 DOM 里找。

@@ -196,6 +196,14 @@ export function excludedRanges(
 }
 
 /**
+ * 像 `key: value` 的一行。键按 YAML 1.2 认：Unicode 合法（中文键很常见），
+ * 引号包起来也合法。值那侧故意放宽：空值、块标量、行内值都算，因为这里只决定
+ * 这块要不要当成属性区收起来，不判断 YAML 本身写得对不对。
+ */
+const MAPPING_ENTRY =
+  /^[ \t]*(?:[\p{L}\p{N}_][\p{L}\p{N}_.-]*|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')[ \t]*:([ \t]|$)/mu
+
+/**
  * 文件开头的属性区（frontmatter）区间。
  * 它不是正文，里面的 `$`、`*`、`=` 都只是 YAML 的普通字符，不该被渲染。
  */
@@ -211,7 +219,7 @@ export function frontmatterRange(text: string): Excluded | null {
   if (!match) return null
   // 属性区若没有一行像 `key:` 的映射项，说明开头那行 `---` 更可能是分隔线
   const body = rest.slice(0, match.index)
-  if (!/^[A-Za-z_][A-Za-z0-9_.-]*[ \t]*:/m.test(body)) return null
+  if (!MAPPING_ENTRY.test(body)) return null
 
   return { from: 0, to: firstLineEnd + 1 + match.index + match[0].length }
 }

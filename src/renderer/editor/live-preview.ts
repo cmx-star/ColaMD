@@ -235,6 +235,19 @@ function parseImage(source: string): { alt: string; src: string } | null {
 }
 
 /**
+ * 给替换块记上它在缓冲区里的区间（`data-source-from` / `data-source-to`）。
+ *
+ * 点一下它就要能回到源码里改（#138：换内核之后表格、图、图片点进去没反应，而 2.6 是
+ * 可以改的）。公式从第一天就是这么做的，这里把同一件事推广到每个替换块，
+ * 由 editor.ts 里一个统一的点击处理器收尾。
+ */
+function withSourceRange<T extends HTMLElement>(el: T, from: number, to: number): T {
+  el.dataset.sourceFrom = String(from)
+  el.dataset.sourceTo = String(to)
+  return el
+}
+
+/**
  * 图片。
  *
  * 加载不出来就把源码原样放回去——和公式、mermaid 一样的规矩：宁可难看，不吞用户的字。
@@ -245,17 +258,20 @@ class ImageWidget extends WidgetType {
     readonly src: string,
     readonly alt: string,
     readonly source: string,
+    readonly from: number,
+    readonly to: number,
   ) {
     super()
   }
 
   eq(other: ImageWidget): boolean {
-    return other.src === this.src && other.alt === this.alt
+    return other.src === this.src && other.alt === this.alt && other.from === this.from && other.to === this.to
   }
 
   toDOM(): HTMLElement {
     const wrap = document.createElement('span')
     wrap.className = 'cm-md-image'
+    withSourceRange(wrap, this.from, this.to)
     const img = document.createElement('img')
     img.src = this.src
     img.alt = this.alt
@@ -330,8 +346,8 @@ function isActiveRange(state: EditorState, from: number, to: number): boolean {
  *
  * 光标所在行照旧退回原文，用户可以就地改。渲染失败时显示 `$...$` 源码。
  *
- * widget 上带着源码区间（`data-math-from` / `data-math-to`）：点它要能就地编辑，
- * 而 DOM 里除了这里没有别的地方知道这段公式在缓冲区里的位置。
+ * widget 上带着源码区间（`data-source-from` / `data-source-to`，见 withSourceRange）：
+ * 点它要能就地编辑，而 DOM 里除了这里没有别的地方知道这段公式在缓冲区里的位置。
  */
 class MathWidget extends WidgetType {
   constructor(
@@ -344,14 +360,13 @@ class MathWidget extends WidgetType {
   }
 
   eq(other: MathWidget): boolean {
-    return other.code === this.code && other.block === this.block
+    return other.code === this.code && other.block === this.block && other.from === this.from && other.to === this.to
   }
 
   toDOM(): HTMLElement {
     const span = document.createElement(this.block ? 'div' : 'span')
     span.className = this.block ? 'cm-md-math cm-md-math-block' : 'cm-md-math cm-md-math-inline'
-    span.setAttribute('data-math-from', String(this.from))
-    span.setAttribute('data-math-to', String(this.to))
+    withSourceRange(span, this.from, this.to)
     try {
       span.innerHTML = katex.renderToString(this.code, {
         displayMode: this.block,
@@ -474,7 +489,9 @@ class TaskCheckboxWidget extends WidgetType {
 function collectTaskItems(state: EditorState, ranges: DecorationRange[], front: Range | null): void {
   iterateContent(state, front, (node) => {
       if (node.name !== 'TaskMarker') return
-      if (isActiveLine(state, node.from)) return
+      // 复选框**始终**画成复选框，光标停在那一行也一样（#136）。
+      // 别的标记在这一行会退回源码，好让人能改到标记本身；复选框不需要这样：
+      // 勾没勾是点出来的，而 `- [ ]` 这几个字符没人会手敲，退回源码只是多一步。
       const raw = state.doc.sliceString(node.from, node.to)
       const checked = /x/i.test(raw)
       ranges.push({
@@ -494,17 +511,18 @@ function collectTaskItems(state: EditorState, ranges: DecorationRange[], front: 
  * 失败就把代码块原样留着——图是锦上添花，代码是用户写的东西。
  */
 class MermaidWidget extends WidgetType {
-  constructor(readonly code: string, readonly key: string) {
+  constructor(readonly code: string, readonly key: string, readonly from: number, readonly to: number) {
     super()
   }
 
   eq(other: MermaidWidget): boolean {
-    return other.key === this.key
+    return other.key === this.key && other.from === this.from && other.to === this.to
   }
 
   toDOM(): HTMLElement {
     const wrap = document.createElement('div')
     wrap.className = 'cm-md-mermaid'
+    withSourceRange(wrap, this.from, this.to)
     wrap.textContent = isChinese() ? '图表渲染中…' : 'Rendering diagram…'
 
     // **不指定**配色：交给 mermaid-bridge 按代码块底色的明暗挑（和它自己的注释一致）。
@@ -543,7 +561,7 @@ function collectMermaid(state: EditorState, ranges: DecorationRange[], front: Ra
       ranges.push({
         from: node.from,
         to: node.to,
-        deco: Decoration.replace({ widget: new MermaidWidget(code, `${node.from}:${code.length}`) }),
+        deco: Decoration.replace({ widget: new MermaidWidget(code, `${node.from}:${code.length}`, node.from, node.to) }),
       })
   })
 }
@@ -551,15 +569,25 @@ function collectMermaid(state: EditorState, ranges: DecorationRange[], front: Ra
 // ─── 属性区（YAML frontmatter）─────────────────────────────────────────────────
 //
 // 属性区是笔记开头的 metadata。它**必须留在缓冲区里**（见 #109：拆出去单独保管、
-// 保存时再拼回来的做法曾经把用户的 YAML 改写成非法内容），但它不该在写作时占地方。
+// 保存时再拼回来的做法曾经把用户的 YAML 改写成非法内容），但它不该在阅读时占地方。
 //
-// 展示上只做一件事：**压淡**。不折叠、不画成卡片、不换成一个「属性区」按钮。
-// 用一个胶囊按钮把几行 YAML 收起来看着像设计，实际是拿一个凭空造出来的控件
-// 替掉用户文件里真实存在的内容（2026-09-26 报的）。文件里有什么就显示什么，
-// 只是画得轻一点；里面的 `- `、`---`、`**` 都是 YAML 字符，不参与 markdown 排版。
+// 展示上做一件事：**收起来**。光标落在里面（准备改它）时才露出来，和「只有光标所在
+// 行露源码」是同一条规则。2026-09-26 一度改成压淡显示，结果 #138 报上来：从 2.6 升
+// 上来的人第一眼就看到文首多出几行 YAML，而它本来不在「所见即所得」的范围里。
+// 不折叠、不画成卡片、不换成一个「属性区」按钮：那些都是拿凭空造出来的控件替掉用户
+// 文件里真实存在的内容。收起时不画任何东西，布局上就像它不在。
 function collectFrontmatter(state: EditorState, ranges: DecorationRange[], front: Range | null): void {
   if (!front) return
-  pushBlockLines(state, front.from, front.to, 'cm-md-frontmatter', ranges)
+  // 光标在里面就露。这里不看焦点：光标停在一个被收起来的块里而窗口没有焦点时，
+  // 下一句敲进去的字会落在看不见的地方。
+  const editing = state.selection.ranges.some(
+    (range) => range.empty && range.head >= front.from && range.head <= front.to
+  )
+  if (editing) {
+    pushBlockLines(state, front.from, front.to, 'cm-md-frontmatter', ranges)
+    return
+  }
+  ranges.push({ from: front.from, to: front.to, deco: Decoration.replace({}) })
 }
 
 // ─── 表格 ────────────────────────────────────────────────────────────────────
@@ -575,18 +603,19 @@ function collectFrontmatter(state: EditorState, ranges: DecorationRange[], front
  * 光标落在表格的任意一行里时退回源码，所以改表格仍然是改文字。
  */
 class TableWidget extends WidgetType {
-  constructor(readonly source: string) {
+  constructor(readonly source: string, readonly base: string | null, readonly from: number, readonly to: number) {
     super()
   }
 
   eq(other: TableWidget): boolean {
-    return other.source === this.source
+    return other.source === this.source && other.base === this.base && other.from === this.from && other.to === this.to
   }
 
   toDOM(): HTMLElement {
     const rows = parseTable(this.source)
     const table = document.createElement('table')
     table.className = 'cm-md-table-widget'
+    withSourceRange(table, this.from, this.to)
     if (rows.length === 0) {
       table.textContent = this.source
       return table
@@ -597,7 +626,7 @@ class TableWidget extends WidgetType {
     head.forEach((cell, index) => {
       const th = document.createElement('th')
       th.style.textAlign = alignOf(rows[1]?.[index] ?? '')
-      appendInline(th, cell)
+      appendInline(th, cell, this.base)
       headRow.appendChild(th)
     })
     thead.appendChild(headRow)
@@ -608,7 +637,7 @@ class TableWidget extends WidgetType {
       for (let i = 0; i < head.length; i++) {
         const td = document.createElement('td')
         td.style.textAlign = alignOf(rows[1]?.[i] ?? '')
-        appendInline(td, row[i] ?? '')
+        appendInline(td, row[i] ?? '', this.base)
         tr.appendChild(td)
       }
       tbody.appendChild(tr)
@@ -663,9 +692,9 @@ function alignOf(delimiter: string): string {
  * `<img onerror=...>` 直接执行掉。这里只认粗体、斜体、行内代码、删除线、链接，
  * 认不出来的就当普通文字。
  */
-const INLINE_RE = /(\*\*|__)(.+?)\1|(\*|_)(.+?)\3|`([^`]+)`|~~(.+?)~~|\[([^\]]*)\]\(([^)]*)\)/g
+const INLINE_RE = /(\*\*|__)(.+?)\1|(\*|_)(.+?)\3|`([^`]+)`|~~(.+?)~~|!\[([^\]]*)\]\(\s*(<[^>]*>|[^)\s]+)[^)]*\)|\[([^\]]*)\]\(([^)]*)\)|<br\s*\/?>/gi
 
-function appendInline(parent: HTMLElement, text: string): void {
+function appendInline(parent: HTMLElement, text: string, base: string | null): void {
   INLINE_RE.lastIndex = 0
   let last = 0
   let match: RegExpExecArray | null
@@ -688,11 +717,18 @@ function appendInline(parent: HTMLElement, text: string): void {
       el.textContent = match[6]
       parent.appendChild(el)
     } else if (match[7] !== undefined) {
+      const img = document.createElement('img')
+      img.src = resolveImageSrc(match[8] ?? '', base)
+      img.alt = match[7]
+      parent.appendChild(img)
+    } else if (match[9] !== undefined) {
       const el = document.createElement('a')
-      el.textContent = match[7] || match[8] || ''
-      const href = (match[8] ?? '').trim()
+      el.textContent = match[9] || match[10] || ''
+      const href = (match[10] ?? '').trim()
       if (/^https?:\/\//i.test(href)) el.setAttribute('href', href)
       parent.appendChild(el)
+    } else if (/^<br/i.test(match[0])) {
+      parent.appendChild(document.createElement('br'))
     }
     last = match.index + match[0].length
   }
@@ -710,7 +746,14 @@ function collectTables(state: EditorState, ranges: DecorationRange[], front: Ran
       ranges.push({
         from: node.from,
         to: node.to,
-        deco: Decoration.replace({ widget: new TableWidget(state.doc.sliceString(node.from, node.to)) }),
+        deco: Decoration.replace({
+          widget: new TableWidget(
+            state.doc.sliceString(node.from, node.to),
+            state.field(documentFileUrlField, false) ?? documentFileUrl,
+            node.from,
+            node.to
+          )
+        }),
       })
       return false
   })
@@ -816,17 +859,20 @@ class HTMLWidget extends WidgetType {
   constructor(
     readonly source: string,
     readonly block: boolean,
+    readonly from: number,
+    readonly to: number,
   ) {
     super()
   }
 
   eq(other: HTMLWidget): boolean {
-    return other.source === this.source && other.block === this.block
+    return other.source === this.source && other.block === this.block && other.from === this.from && other.to === this.to
   }
 
   toDOM(): HTMLElement {
     const wrap = document.createElement(this.block ? 'div' : 'span')
     wrap.className = this.block ? 'cm-md-html cm-md-html-block' : 'cm-md-html cm-md-html-inline'
+    withSourceRange(wrap, this.from, this.to)
     wrap.appendChild(sanitizeHTML(this.source))
     return wrap
   }
@@ -840,7 +886,7 @@ function collectHTML(state: EditorState, ranges: DecorationRange[], front: Range
     ranges.push({
       from: node.from,
       to: node.to,
-      deco: Decoration.replace({ widget: new HTMLWidget(state.doc.sliceString(node.from, node.to), block) }),
+      deco: Decoration.replace({ widget: new HTMLWidget(state.doc.sliceString(node.from, node.to), block, node.from, node.to) }),
     })
     return false
   })
@@ -904,7 +950,7 @@ function collectImages(state: EditorState, ranges: DecorationRange[], front: Ran
     ranges.push({
       from: node.from,
       to: node.to,
-      deco: Decoration.replace({ widget: new ImageWidget(resolveImageSrc(parsed.src, base), parsed.alt, source) }),
+      deco: Decoration.replace({ widget: new ImageWidget(resolveImageSrc(parsed.src, base), parsed.alt, source, node.from, node.to) }),
     })
     return false
   })
