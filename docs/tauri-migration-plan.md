@@ -89,13 +89,16 @@ ColaMD.app
 ### P1 工具链与最小壳（1 天）
 
 - 装 rustup（本机实测 static.rust-lang.org 通，cargo 走已配置的中科大镜像）；`npm install`
-- 搭 src-tauri 骨架：vite 打 renderer，frontendDist 指向 dist/renderer，窗口按 design.md（标题栏拖拽区、无边框、chrome 行高）
+- 搭 src-tauri 骨架：vite 打 renderer（`vite.tauri.config.ts`），frontendDist 指向 `dist-tauri/renderer`。与 Electron 的 `dist/renderer` 分开，两套壳在迁移期可以各自构建互不覆盖
+- 窗口按 design.md（标题栏拖拽区、Overlay 标题栏、chrome 行高）
 - 验收：Tauri 窗口跑起现有界面，与现版截图一致；先量一次产物体积作对照
+- 实测（2026-10-09）：release 打包 `ColaMD.app` 6.4 MiB（对照 Electron 未压缩 215 MB、arm64 zip 85.3 MB），真机窗口渲染与编辑正常
 
 ### P2 文件 IO 地基（3 天）
 
 - Rust commands：openFile / openFilePath / activateFile / listSiblings / listDirectory / revealFile / saveFile / saveFileAs / getFileManagerName
-- 原子保存（临时文件加 rename）、mtime 冲突检测、watcher（debounce、自愈、rename 检测）、recovered 副本逻辑
+- 保存语义照搬现有实现：**普通写入，不是临时文件加 rename**（原先这里写错了）。Electron 版本就是普通 writeFile，而「原子保存」指的是**检测**外部写入者用 rename 替换文件：所以 watcher 盯父目录，而不是绑在文件的 inode 上
+- mtime 冲突检测、watcher（100ms 防抖、300ms 抑制 FSEvents 历史、自愈、rename 检测、兄弟文件 300ms 刷新、比对内容跳过自写回声）、recovered 副本逻辑
 - 验收：外部改写 1 秒内刷新；`save(open(x)) === x`；冲突路径与现版一致（先问用户，副本落 `~/.colamd/recovered`，写不成功不丢弃）
 
 ### P3 适配层与窗口、标签（3 天）
