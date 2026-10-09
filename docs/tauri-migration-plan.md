@@ -101,7 +101,7 @@ ColaMD.app
 - mtime 冲突检测、watcher（100ms 防抖、300ms 抑制 FSEvents 历史、自愈、rename 检测、兄弟文件 300ms 刷新、比对内容跳过自写回声）、recovered 副本逻辑
 - 验收：外部改写 1 秒内刷新；`save(open(x)) === x`；冲突路径与现版一致（先问用户，副本落 `~/.colamd/recovered`，写不成功不丢弃）
 
-**进度（2026-10-09）**：文件 IO、watcher、关闭保护、冲突流程、最近文件、菜单、主题、系统字体、HTML 导出已完成；`cargo test` 22 项通过；实测外部改写 1 秒内到达渲染层。手工验收清单见 [tauri-test-plan.md](tauri-test-plan.md)。
+**进度（2026-10-09）**：文件 IO、watcher、关闭保护、冲突流程、最近文件、菜单、主题、系统字体、HTML 导出已完成；`cargo test` 26 项通过。手工验收走完第一轮（T1 到 T13 的核心项全过，含热更新、字节保真、冲突保护与恢复副本），过程中修掉 7 个单元测试覆盖不到的缺陷，清单与证据见 [tauri-test-plan.md](tauri-test-plan.md) 第四节。尚未移植：导出 PDF / 图片 / Word、自动更新、右键菜单、窗口状态记忆。
 
 ### P3 适配层与窗口、标签（3 天）
 

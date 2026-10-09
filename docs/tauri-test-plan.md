@@ -300,16 +300,48 @@ ls -la ~/Downloads/colamd-test/big.md
 | 会话恢复策略 | Electron 版本身待重设计，未搬 |
 | Windows 标题栏菜单按钮 | `popupAppMenu` 需要把按钮位置传进来才能弹菜单 |
 
-## 四、我这边已实测通过的
+## 四、实测记录（2026-10-09 第一轮）
+
+在一台 macOS 机器上按上面的清单走了一轮，结果如下。每条都有日志或文件作为证据，不是「看着像没问题」。
+
+### 通过
 
 | 项 | 证据 |
 | --- | --- |
-| Rust 单元测试 22 个 | `cargo test`：字节保真 `save(open(x)) === x`、外部改动检测（1ms 容差）、兄弟文件排序与隐藏目录、保存默认名、路径兼容、恢复副本命名 |
-| 菜单构建与勾选回报 | 日志 `menu built (theme=elegant, lang=en)`，主题回报后自动重建 |
-| 启动参数打开文件 | 日志 `opened <路径> (N bytes)` + `watching <路径>` |
-| 外部改写热更新 | 日志 `watcher: ... changed on disk, handing it to the renderer`，两秒内出现 |
-| 打包产物 | `ColaMD.app` 6.4 MiB（对照 Electron 未压缩 215 MB、arm64 zip 85.3 MB） |
-| Electron 版仍可构建 | `npm run build` 通过，双轨未破 |
+| T1 外部改写热更新 | 外部追加 4 行后 2 秒内 `watcher: ... changed on disk, handing it to the renderer` |
+| T2 打开文件与标签页 | `opened <路径> (N bytes)`；同一目录再打开走新标签 |
+| T3.1 保存写入内容 | `saved <路径> (N bytes)`，磁盘内容与窗口一致 |
+| T3.2 字节保真 | 含 `3 * 4`、`$5`、`snake_case`、表格分隔行的文档，保存前后 sha256 一致；且日志确认保存确实发生 |
+| T4 另存为 | `save dialog chose <路径>` → `saved <路径> (N bytes)`；新窗口内同样可用 |
+| T5 关闭保护 | 关标签：`asked: discard an unsaved tab?`，点取消后无 `watching` 行（标签留住了）；关窗口：`close guard: unsaved changes, asking` |
+| T6 冲突 | 脏文档撞上外部改写 → `renderer reports a conflict (N bytes of local work)`；选保留则内容无损；选加载则先写 `~/.colamd/recovered/note-<时间戳>.md`，副本大小与报告值一致 |
+| T7 中文输入法 | 在 T6 中持续输入整段中文，字符正确无丢失；输入期间自动保存正常；含中文的文档字节保真通过 |
+| T8 文件面板 | 点面板中的文件替换当前标签的文档，选中项跟随当前文档 |
+| T9 主题与字体 | 主题切换后 `menu built (theme=X)`；字体对话框列出系统字体（修复后 286 个族） |
+| T11 大文件 | 1.3MB / 约 1.8 万行文档正常打开与渲染，Rust 侧读取约 1ms |
+| T12 导出 HTML | 产出独立 HTML（`<!doctype html>` + 内联样式 + `<article class="colamd-document">`），标题取自文档标题 |
+| T13 多窗口 | 新窗口可拖动、快捷键可用、各窗口保存各自的文件，`opened window doc-N` |
+
+### 这一轮修掉的缺陷
+
+手工测试的价值就在这里：下面 7 个都是单元测试和类型检查覆盖不到的。
+
+| # | 缺陷 | 症状 | 根因 |
+| --- | --- | --- | --- |
+| 1 | 菜单命令送不到窗口 | ⌘S 完全无效 | 事件投递只找「当前聚焦窗口」且 fallback 标签写死，找不到就静默丢弃 |
+| 2 | 丢弃/冲突弹窗按钮映射写反（三处） | 点「取消」反而丢弃内容 | 按位置判定 `blocking_show()` 的布尔值 |
+| 3 | 关标签用 `window.confirm` | 未保存标签被静默丢弃 | WKWebView 不实现该原生框，wry 直接返回「确认」 |
+| 4 | 界面语言读环境变量 | 中文系统显示英文菜单 | GUI 应用从 Finder 启动时没有 `LANG`/`LC_ALL` |
+| 5 | 能力授权只给 `main` 窗口 | 新窗口拖不动 + 收不到任何菜单事件 | `capabilities` 的 `windows` 写成 `["main"]` |
+| 6 | 依赖 `-webkit-app-region` | 所有窗口都不能拖动 | 这是 Chromium 特性，WKWebView 忽略 |
+| 7 | 字体列表为空 | 字体对话框没有可选字体 | 调用的 AppKit 方法在当前 macOS 已移除，Electron 版同样中招 |
+
+### 仍未验证
+
+| 项 | 说明 |
+| --- | --- |
+| T10 菜单与快捷键全项 | ⌘N / ⌘W / ⌘S / ⌘⇧S / ⌘O / ⌘F 已实测；导出与放映类快捷键未逐一走 |
+| 中文输入的边界 | 组合中按回车、候选框跟随、光标行露源码时输入，未专门测 |
 
 ## 五、结果怎么回传
 

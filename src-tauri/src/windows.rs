@@ -25,7 +25,12 @@ fn configure(
         builder
             .title_bar_style(tauri::TitleBarStyle::Overlay)
             .hidden_title(true)
-            .traffic_light_position(tauri::LogicalPosition::new(16.0, 10.0))
+            // 22, not the 10 the Electron build used: Electron's value is the offset
+            // of the button frame's top, while tao's is the space it leaves *below*
+            // the buttons (its title bar container is `button height + y` tall and the
+            // buttons centre in it). With 10 the lights sat 6 points high in our
+            // 36-point row (2026-10-09).
+            .traffic_light_position(tauri::LogicalPosition::new(16.0, 22.0))
     } else {
         builder
     }
