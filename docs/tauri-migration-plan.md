@@ -70,7 +70,7 @@ loomark.app
 | src/main/docx-export.ts | 189 | 移到 renderer 侧生成，plugin-dialog 保存（纯 TS 逻辑，docx 库与平台无关） |
 | src/preload/index.ts | 274（77 成员） | 适配层加 Rust commands |
 | mobile/ios | Swift | 不动 |
-| vscode-extension | JS | 不动 |
+| vscode-extension | JS | 已删除（2026-10-09：一直没维护，与 Electron 版一起退场） |
 | src/web | TS | 不动 |
 | scripts/verify-* 等 6 个 | 约 1700 | 适配驱动方式（P7，见 R8） |
 | electron-builder.yml | | 换成 src-tauri/tauri.conf.json 的 bundle 段 |

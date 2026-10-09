@@ -660,7 +660,50 @@ fn hand_over_verify_probe(window: &WebviewWindow) {
         return;
     };
     trace(|| format!("verify check requested: {name}"));
-    let _ = window.emit("verify-run", name);
+    // 主题验收要读的是 `themes/*.css` 的原文：页面读不到磁盘，也没有能下文件的协议，
+    // 所以由这里读进来，随启动参数交给渲染层（见 src/renderer/verify/checks.ts 的
+    // 'themes'）。目录由脚本通过 COLAMD_VERIFY_THEMES 指定，没给就不带。
+    let themes = theme_sources_for_verify(&name);
+    let payload = if themes.is_empty() {
+        None
+    } else {
+        serde_json::to_string(&serde_json::json!({ "themes": themes })).ok()
+    };
+    // 第二个参数是检查项的启动参数：没有就是 null，渲染层按「没有」处理。
+    let _ = window.emit("verify-run", (name, payload));
+}
+
+/// `themes/*.css` 的原文，键是文件名：给 COLAMD_VERIFY=themes 那一次验收用。
+///
+/// 别的检查项不读，读不到也不报错——「一个主题文件都没有」这个判断留给验收脚本，
+/// 壳这里只负责把文件递过去。
+fn theme_sources_for_verify(name: &str) -> std::collections::BTreeMap<String, String> {
+    let mut sources = std::collections::BTreeMap::new();
+    if name != "themes" {
+        return sources;
+    }
+    let Ok(dir) = std::env::var("COLAMD_VERIFY_THEMES") else {
+        trace(|| "no COLAMD_VERIFY_THEMES: the theme check runs with nothing to measure".to_string());
+        return sources;
+    };
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        trace(|| format!("could not read the theme directory {dir}"));
+        return sources;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|value| value.to_str()) != Some("css") {
+            continue;
+        }
+        let Some(file) = path.file_name().and_then(|value| value.to_str()) else {
+            continue;
+        };
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            sources.insert(file.to_string(), text);
+        }
+    }
+    trace(|| format!("theme check: handing over {} files from {dir}", sources.len()));
+    sources
 }
 
 #[tauri::command]

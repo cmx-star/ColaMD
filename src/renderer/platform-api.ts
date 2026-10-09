@@ -98,8 +98,12 @@ export interface LoomarkApi {
   reportDirty: (isDirty: boolean) => void
   /** Verification channel: run the named check in the page and report the result.
    *  It exists because the acceptance scripts used to drive the app over the Chrome
-   *  DevTools protocol, which no system WebView offers. */
-  onVerifyRun: (callback: (name: string) => void) => void
+   *  DevTools protocol, which no system WebView offers.
+   *
+   *  `params` is the check's own startup data, JSON-encoded by the shell; a check
+   *  that needs nothing gets null. The theme check uses it to receive the
+   *  `themes/*.css` sources, which a page cannot read off the disk itself. */
+  onVerifyRun: (callback: (name: string, params: string | null) => void) => void
   verifyReport: (payload: string) => Promise<void>
   /** A real confirmation for discarding unsaved content. `window.confirm` is not
    *  available in every shell, and the shell that lacks it answers "yes". */

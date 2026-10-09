@@ -14,6 +14,38 @@ use crate::windowstate::{self, Bounds};
 
 static NEXT_WINDOW: AtomicU32 = AtomicU32::new(1);
 
+// ─── 验收窗口的尺寸与位置 ────────────────────────────────────────────────────
+//
+// 验收脚本（COLAMD_VERIFY）量的是整篇文档，而 CodeMirror 只为**视口内**的行建 DOM。
+// 夹具比一屏长，窗口不够高的话下半段根本不渲染，那些规则就会被误判成「命中不到任何
+// 元素」。旧脚本是走 CDP 的 Emulation.setDeviceMetricsOverride 把视口拉到 2600 高，
+// 系统 WebView 没有这个调用，所以退而求其次：验收运行时把窗口本身开得足够高。
+//
+// 宽度沿用 1200，与上游那次 overrride 一致；高度 2600 是上游实测够用的值，留到 2800。
+// 这只是高度，不是面积问题：一个 2800 高的窗口在任何显示器上都放得下（放不下也不会
+// 被裁剪，视口高度由窗口自己的尺寸决定，不受屏幕限制）。
+const VERIFY_WINDOW_WIDTH: f64 = 1200.0;
+const VERIFY_WINDOW_HEIGHT: f64 = 2800.0;
+
+/// 验收窗口放哪：屏幕外，但仍然**可见**。
+///
+/// 为什么不是 `visible(false)`：隐藏的窗口收不到绘制，基于截图的验收会永远卡住
+/// （上游 1e9b481 学到的）。所以是「可见但没人看得见」——移到 -100000 去。
+/// 让它彻底离开所有显示器，验收时也不抢用户的屏幕。
+const VERIFY_WINDOW_X: f64 = -100_000.0;
+const VERIFY_WINDOW_Y: f64 = -100_000.0;
+
+/// 验收运行时要把窗口改成什么样；不是验收运行就是 None。
+fn verify_geometry() -> Option<Bounds> {
+    std::env::var("COLAMD_VERIFY").ok()?;
+    Some(Bounds {
+        x: VERIFY_WINDOW_X,
+        y: VERIFY_WINDOW_Y,
+        width: VERIFY_WINDOW_WIDTH,
+        height: VERIFY_WINDOW_HEIGHT,
+    })
+}
+
 /// A window whose zoom should follow the saved preference, if any.
 pub struct CreatedWindow {
     pub window: WebviewWindow,
@@ -53,7 +85,10 @@ fn configure(
 /// The window the app starts with, sized and placed where it was left last time.
 pub fn create_main_window(app: &AppHandle) -> Option<CreatedWindow> {
     let saved = windowstate::saved_geometry(app);
-    let geometry = saved.map(|(bounds, _)| bounds);
+    // 验收运行时尺寸与位置由 `verify_geometry()` 说了算，不还原上次的窗口状态：
+    // 用户上次把窗口拖到哪、开多大，跟这次要量的东西无关，还原回来只会让视口高度
+    // 随机（而这一项验收对高度敏感，见上面那段注释）。
+    let geometry = verify_geometry().or_else(|| saved.map(|(bounds, _)| bounds));
     let zoom = saved.and_then(|(_, zoom)| zoom);
     let builder = configure(
         WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())),

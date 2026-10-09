@@ -97,7 +97,7 @@
 | --- | --- |
 | `offscreen-window.cjs` | 整个是 Electron 主进程 API，Tauri 用不上。**但结论必须照抄**：屏外可见，不要隐藏——`1e9b481` 修的正是「隐藏窗口等不到 paint」这个自伤回归 |
 | `7ad5639`（列表重编号早期版） | 已被 `0bafc7c` 推翻（屏幕上好看、文件里不对） |
-| VS Code 扩展删除 | 我们仍保留 `vscode-extension/`，独立决策 |
+| VS Code 扩展删除 | 跟随上游删除（2026-10-09 决定） |
 | 上游 Linux/Electron 打包相关 | 与 Tauri 打包无关 |
 | `package.json` 依赖调整 | 上游删 Milkdown、加 remark-gfm 等；我们依赖已不同，按需单独处理 |
 

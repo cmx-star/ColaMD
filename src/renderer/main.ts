@@ -1735,6 +1735,19 @@ window.__loomarkPrintExport = {
   }
 }
 
+/** 验收检查项的启动参数，由壳随 'verify-run' 一起发过来（没有就是 null）。 */
+function applyVerifyParams(params: string | null): void {
+  if (!params) return
+  try {
+    const parsed = JSON.parse(params) as { themes?: Record<string, string> }
+    // 主题验收要读的是 themes/*.css 的原文，而页面读不到磁盘（也没有能下文件的协议）：
+    // 壳读好了递过来，见 src-tauri/src/commands.rs 的 theme_sources_for_verify。
+    if (parsed.themes) window.__loomarkVerifyThemes = parsed.themes
+  } catch {
+    // 参数坏了就当没有：检查项自己会报「没东西可量」。
+  }
+}
+
 // 放映幻灯片: the pages are the editor's own blocks, so the document has to be
 // rendered before the deck starts. In source mode the rich text tree still holds
 // whatever was there before the textarea was touched, and presenting that would
@@ -1878,13 +1891,17 @@ async function init(): Promise<void> {
   // Verification channel: the shell names a check (COLAMD_VERIFY), the check runs
   // here from bundled code, and the answer goes back for the script that is waiting.
   // No eval: the page's CSP forbids it, and it should. See src/renderer/verify/checks.ts.
-  api.onVerifyRun((name) => {
+  api.onVerifyRun((name, params) => {
     void (async () => {
       let result: unknown
       let failure: string | null = null
       try {
         const check = CHECKS[name]
         if (!check) throw new Error(`未知的验收项：${name}`)
+        // 检查项的启动参数（壳随事件发过来的 JSON）。主题验收要的是 themes/*.css 的
+        // 原文，页面自己读不到磁盘，只能由壳递过来；挂到 window 上是因为检查项在
+        // 单独一个模块里，不需要为了一个测试用途给它加参数。
+        applyVerifyParams(params)
         result = await check()
       } catch (error) {
         failure = error instanceof Error ? (error.stack ?? error.message) : String(error)

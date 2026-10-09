@@ -91,7 +91,10 @@ export function createTauriApi(): LoomarkApi {
     saveFileAs: async (content: string, expectedPath?: string) =>
       invoke<string | null>('save_file_as', { content, expectedPath }),
     confirmDiscardTab: async (message: string) => invoke<boolean>('confirm_discard_tab', { message }),
-    onVerifyRun: (callback: (source: string) => void) => on<string>('verify-run', callback),
+    // 壳发过来的是 `(检查项名字, 该检查项的启动参数或 null)`，见 commands.rs 的
+    // hand_over_verify_probe。
+    onVerifyRun: (callback: (source: string, params: string | null) => void) =>
+      on<[string, string | null]>('verify-run', ([name, params]) => callback(name, params)),
     verifyReport: async (payload: string) => {
       await invoke('verify_report', { payload })
     },

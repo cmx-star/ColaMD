@@ -16,7 +16,15 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
-const ROOT = join(homedir(), 'Library', 'Caches', 'loomark-verify')
+/**
+ * 工作目录的根。
+ *
+ * 默认还是 `~/Library/Caches/loomark-verify`，正常跑不会变。`COLAMD_VERIFY_WORKDIR`
+ * 是给**跑不动**这一条路留的：沙箱里（或任何写不了 Caches 的环境里）脚本连建目录都会
+ * EPERM，整个验收一项都跑不了。指到别处就能照常跑，判定与报告完全一样。
+ * 指到哪，`stopVerifyApp` 的标记就跟着变，回收进程的那条路不会因此失手。
+ */
+const ROOT = process.env.COLAMD_VERIFY_WORKDIR || join(homedir(), 'Library', 'Caches', 'loomark-verify')
 
 function wipe(path) {
   try {
