@@ -10,15 +10,35 @@
 
 import { EditorState, Compartment, type Extension } from '@codemirror/state'
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown'
+import { GFM, type MarkdownParser } from '@lezer/markdown'
 import { languages } from '@codemirror/language-data'
-import { indentOnInput, bracketMatching, syntaxHighlighting } from '@codemirror/language'
-import { highlightSelectionMatches } from '@codemirror/search'
+import { indentOnInput, bracketMatching, syntaxHighlighting, Language } from '@codemirror/language'
 import { keymap } from '@codemirror/view'
 import { markdownHighlightStyle } from './source-theme'
 
 /** 可编辑性放在一个 compartment 里，方便运行时切换而不重建编辑器。 */
 export const editableCompartment = new Compartment()
+
+/**
+ * 基准语法：CommonMark 加 GFM，就这些。
+ *
+ * 为什么不用 `@codemirror/lang-markdown` 直接给的 `markdownLanguage`：它比 GFM 还多
+ * 带三个扩展（Subscript、Superscript、Emoji），而这三个节点这个软件一个都不渲染，
+ * 多出来的只有副作用。Emoji 最典型：它把「冒号 + 数字 + 冒号」也当短代码，于是时间
+ * 轴里的 `00:00:17` 中间那段被语法着色当成字符字面量，而 character 是 string 的子
+ * 标签，正好命中代码块里那条 string 着色规则，于是时间戳中间绿了一段。
+ *
+ * 保留 GFM，因为表格、删除线、任务列表、裸链接都是要渲染的。
+ */
+const markdownBase = new Language(
+  commonmarkLanguage.data,
+  // `Language` 只把 parser 当 CodeMirror 自己的 Parser 接口看，不带 configure；
+  // 实际对象是 @lezer/markdown 的 MarkdownParser，上一层扩展要在这里换掉。
+  (commonmarkLanguage.parser as MarkdownParser).configure([GFM]),
+  [],
+  'markdown'
+)
 
 /**
  * 状态层的扩展集合：语言解析、语法高亮、撤销栈、缩进、快捷键。
@@ -31,9 +51,10 @@ export function stateExtensions(): Extension {
     history(),
     indentOnInput(),
     bracketMatching(),
-    highlightSelectionMatches(),
+    // 不挂 highlightSelectionMatches()（#144）：选中一个字，全文同字都被框，
+    // 看着像渲染故障。查找替换的高亮是 search 扩展自己的，不在这里。
     // markdown 语言支持 + 语法高亮（颜色走 CSS 变量，深浅主题自动跟随）
-    markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }),
+    markdown({ base: markdownBase, codeLanguages: languages, addKeymap: false }),
     syntaxHighlighting(markdownHighlightStyle),
     // 这里**不装** `searchKeymap`：它会绑 Cmd+F 打开 CodeMirror 自带的那块检索面板，
     // 那块面板只有英文、也不跟主题走，和我们自己的检索面板（有中英文、按主题上色）撞在
