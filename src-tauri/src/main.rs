@@ -39,6 +39,11 @@ pub struct MenuState {
     theme: Mutex<String>,
     panel_side: Mutex<String>,
     page_width: Mutex<String>,
+    /// The window the user was last working in. A menu accelerator fires without
+    /// naming a window, and at that instant none of them may report focus, so the
+    /// last known one is what the event belongs to (the Electron build kept the
+    /// same thing in `focusedOrLastWindow()`).
+    last_focused: Mutex<Option<String>>,
 }
 
 impl MenuState {
@@ -67,6 +72,14 @@ impl MenuState {
         }
         *current = side.to_string();
         true
+    }
+
+    pub fn remember_focus(&self, label: &str) {
+        *self.last_focused.lock().expect("last focused") = Some(label.to_string());
+    }
+
+    pub fn last_focused(&self) -> Option<String> {
+        self.last_focused.lock().expect("last focused").clone()
     }
 
     pub fn set_page_width(&self, width: &str) -> bool {
@@ -169,6 +182,9 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if let WindowEvent::Focused(true) = event {
+                window.app_handle().state::<MenuState>().remember_focus(window.label());
+            }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 // Never let the window go before the close guard has run: it is what
                 // stops unsaved work from disappearing.

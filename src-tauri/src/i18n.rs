@@ -20,17 +20,43 @@ fn load() -> String {
             }
         }
     }
-    // First run: follow the system, the way app.getLocale() did.
+    // No stored choice: follow the system, the way app.getLocale() did.
+    if system_prefers_chinese() {
+        "zh".to_string()
+    } else {
+        "en".to_string()
+    }
+}
+
+/// The system's own language.
+///
+/// An app launched from Finder or the Dock inherits almost no environment, so
+/// `LANG`/`LC_ALL` say nothing about what the user reads; that is why the menu came
+/// up English on a Chinese system (2026-10-09). On macOS the answer lives in the
+/// global defaults, which is what `app.getLocale()` reads too.
+fn system_prefers_chinese() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("defaults").args(["read", "-g", "AppleLanguages"]).output() {
+            // The list is ordered by preference, so the first quoted tag is the answer.
+            let text = String::from_utf8_lossy(&output.stdout);
+            if let Some(tag) = first_quoted(&text) {
+                return tag.to_lowercase().starts_with("zh");
+            }
+        }
+        if let Ok(output) = std::process::Command::new("defaults").args(["read", "-g", "AppleLocale"]).output() {
+            let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
+            if !text.trim().is_empty() {
+                return text.contains("zh");
+            }
+        }
+    }
     let locale = std::env::var("LC_ALL")
         .or_else(|_| std::env::var("LC_MESSAGES"))
         .or_else(|_| std::env::var("LANG"))
         .unwrap_or_default()
         .to_lowercase();
-    if locale.starts_with("zh") {
-        "zh".to_string()
-    } else {
-        "en".to_string()
-    }
+    locale.starts_with("zh")
 }
 
 fn current() -> &'static str {
@@ -70,6 +96,14 @@ pub fn set_code(language: &str) -> bool {
     true
 }
 
+/// The first `"…"` token in a string, used for the defaults output.
+fn first_quoted(text: &str) -> Option<String> {
+    let start = text.find('"')?;
+    let rest = &text[start + 1..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,6 +113,15 @@ mod tests {
         let (zh, en) = ("中文", "English");
         let picked = t(zh, en);
         assert!(picked == zh || picked == en);
+    }
+
+    #[test]
+    fn the_preferred_language_is_the_first_quoted_tag() {
+        let output = "(\n    \"zh-Hans-CN\"\n)\n";
+        assert_eq!(first_quoted(output).as_deref(), Some("zh-Hans-CN"));
+        let output = "(\n    \"en-US\",\n    \"zh-Hans-CN\"\n)\n";
+        assert_eq!(first_quoted(output).as_deref(), Some("en-US"));
+        assert_eq!(first_quoted(""), None);
     }
 
     #[test]

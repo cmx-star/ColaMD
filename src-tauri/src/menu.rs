@@ -29,20 +29,42 @@ const BUILT_IN_THEMES: [(&str, &str, &str); 12] = [
     ("dracula", "德古拉", "Dracula"),
 ];
 
+/// Where a menu command goes: the focused window, else the last one the user worked
+/// in, else the main window. A menu accelerator belongs to the app rather than to a
+/// window, so none of these may report focus at that instant; dropping the event
+/// silently is what made ⌘S do nothing (2026-10-09).
 fn send_to_focused(app: &AppHandle, event: &str, payload: Option<&str>) {
-    let window = app
-        .webview_windows()
-        .into_values()
+    let windows = app.webview_windows();
+    let focused = windows
+        .values()
         .find(|window| window.is_focused().unwrap_or(false))
-        .or_else(|| app.get_webview_window("main"));
-    if let Some(window) = window {
-        match payload {
-            Some(value) => {
-                let _ = window.emit(event, value);
-            }
-            None => {
-                let _ = window.emit(event, ());
-            }
+        .map(|window| window.label().to_string());
+    let remembered = app.state::<crate::MenuState>().last_focused();
+    let only_window = if windows.len() == 1 { windows.keys().next().cloned() } else { None };
+
+    let target = focused
+        .clone()
+        .or_else(|| remembered.clone())
+        .filter(|label| windows.contains_key(label))
+        .or_else(|| app.get_webview_window("main").map(|window| window.label().to_string()))
+        .or(only_window);
+
+    let Some(label) = target else {
+        crate::trace::trace(|| {
+            format!("menu event {event} dropped: no window to deliver to (focused={focused:?}, remembered={remembered:?}, open={:?})", windows.keys().collect::<Vec<_>>())
+        });
+        return;
+    };
+    let Some(window) = app.get_webview_window(&label) else {
+        return;
+    };
+    crate::trace::trace(|| format!("menu event {event} -> window {label}"));
+    match payload {
+        Some(value) => {
+            let _ = window.emit(event, value);
+        }
+        None => {
+            let _ = window.emit(event, ());
         }
     }
 }
@@ -395,6 +417,7 @@ fn build_inner(
 /// Where the menu sends its commands. Items the renderer owns become events on the
 /// focused window, exactly as the Electron menu did.
 pub fn handle_event(app: &AppHandle, id: &str) {
+    crate::trace::trace(|| format!("menu event: {id}"));
     let window = app
         .webview_windows()
         .into_values()
