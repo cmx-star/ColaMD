@@ -41,13 +41,22 @@ open src-tauri/target/release/bundle/macos/ColaMD.app
 ```
 [colamd] menu built (theme=, lang=en)
 [colamd] renderer ready (fullscreen=false)
-[colamd] watching /tmp/colamd-fixture.md
-[colamd] opened /tmp/colamd-fixture.md (263 bytes)
+[colamd] watching /Users/you/Downloads/colamd-test/note.md
+[colamd] opened /Users/you/Downloads/colamd-test/note.md (634 bytes)
 [colamd] menu built (theme=elegant, lang=en)
-[colamd] watcher: /tmp/colamd-fixture.md changed on disk, handing it to the renderer
+[colamd] watcher: /Users/you/Downloads/colamd-test/note.md changed on disk, handing it to the renderer
 ```
 
 界面语言默认跟随系统；系统不是中文时菜单是英文，这是和 Electron 版一致的行为。
+
+**测试文件放哪**：不要放 `/tmp`。macOS 的文件对话框到不了那里（`/tmp` 是 `/private/tmp` 的软链接，还带隐藏属性），用 ⌘O 根本选不到，只能靠启动参数或拖拽。把测试文件放在正常目录里，比如：
+
+```bash
+mkdir -p ~/Downloads/colamd-test
+f=~/Downloads/colamd-test/note.md
+```
+
+本文档后面统一用 `$f` 代表「你在窗口里打开的那个文件」，命令里请换成实际路径。
 
 ## 二、测试清单
 
@@ -230,7 +239,13 @@ macOS 上渲染引擎从 Chromium 换成了 WKWebView，输入法组合行为是
 
 ### T11 大文件
 
-准备一个约 1MB 的 markdown（可 `python3 -c "print('# t\n\n' + '段落内容 '*50000)" > /tmp/big.md`）：
+准备一个约 1MB 的 markdown（放在正常目录，`/tmp` 选不到）：
+
+```bash
+python3 -c "print('# 大文件\n\n' + '这是用来测大文件打开的段落。' * 50000)" > ~/Downloads/colamd-test/big.md
+ls -la ~/Downloads/colamd-test/big.md
+```
+
 
 | 项 | 期望 |
 | --- | --- |
@@ -270,7 +285,7 @@ macOS 上渲染引擎从 Chromium 换成了 WKWebView，输入法组合行为是
 | --- | --- |
 | Rust 单元测试 22 个 | `cargo test`：字节保真 `save(open(x)) === x`、外部改动检测（1ms 容差）、兄弟文件排序与隐藏目录、保存默认名、路径兼容、恢复副本命名 |
 | 菜单构建与勾选回报 | 日志 `menu built (theme=elegant, lang=en)`，主题回报后自动重建 |
-| 启动参数打开文件 | 日志 `opened /tmp/colamd-fixture.md (263 bytes)` + `watching ...` |
+| 启动参数打开文件 | 日志 `opened <路径> (N bytes)` + `watching <路径>` |
 | 外部改写热更新 | 日志 `watcher: ... changed on disk, handing it to the renderer`，两秒内出现 |
 | 打包产物 | `ColaMD.app` 6.4 MiB（对照 Electron 未压缩 215 MB、arm64 zip 85.3 MB） |
 | Electron 版仍可构建 | `npm run build` 通过，双轨未破 |
