@@ -1,4 +1,4 @@
-// Themes: the twelve built-ins live in the renderer's CSS; what the shell owns is
+// Themes: the four built-ins live in the renderer's CSS; what the shell owns is
 // the user's own theme files under `~/.loomark/themes`, the import dialog that puts
 // them there, and handing the CSS to the renderer when the menu picks one.
 //

@@ -195,4 +195,4 @@ assert.equal(values_direct['bg-color'], values_default['bg-color'])
 assert.equal(values_direct['text-color'], values_default['text-color'])
 assert.equal(values_direct['border-color'], values_default['border-color'])
 
-console.log('Theme color contract passed for 12 built-in and standalone themes.')
+console.log('Theme color contract passed for the built-in themes and the 12 standalone stylesheets.')

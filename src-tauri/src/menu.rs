@@ -115,7 +115,7 @@ fn format_submenu(app: &AppHandle) -> tauri::Result<tauri::menu::Submenu<tauri::
     builder.build()
 }
 
-/// Theme items: the twelve built-ins, then any custom themes the user imported,
+/// Theme items: the four built-ins, then any custom themes the user imported,
 /// then the import entry. Check state comes from what the renderer reported.
 fn theme_submenu(app: &AppHandle, current: &str) -> tauri::Result<tauri::menu::Submenu<tauri::Wry>> {
     let mut builder = SubmenuBuilder::new(app, t("主题", "Theme"));
