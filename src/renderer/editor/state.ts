@@ -11,7 +11,7 @@
 import { EditorState, Compartment, type Extension } from '@codemirror/state'
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown'
-import { GFM, type MarkdownParser } from '@lezer/markdown'
+import { GFM, InlineContext, type MarkdownParser } from '@lezer/markdown'
 import { languages } from '@codemirror/language-data'
 import { indentOnInput, bracketMatching, syntaxHighlighting, Language } from '@codemirror/language'
 import { keymap } from '@codemirror/view'
@@ -33,7 +33,49 @@ export const editableCompartment = new Compartment()
  *
  * 保留 GFM，因为表格、删除线、任务列表、裸链接都是要渲染的。
  */
-const markdownParser: MarkdownParser = (commonmarkLanguage.parser as MarkdownParser).configure([GFM])
+const markdownParser: MarkdownParser = (commonmarkLanguage.parser as MarkdownParser).configure([
+  GFM,
+  {
+    defineNodes: [{ name: 'WikiLink' }, { name: 'WikiLinkMark' }],
+    parseInline: [
+      {
+        name: 'WikiLink',
+        parse(cx: InlineContext, next: number, pos: number): number {
+          // `[[` 开头才可能是双链；单个 `[` 交给现有的 Link 解析器。
+          if (next !== 91 /* '[' */ || cx.char(pos + 1) !== 91) return -1
+          // 从 pos 起找闭合的 `]]`，中途换行或到段尾就放弃。
+          let end = -1
+          for (let i = pos + 2; i < cx.end; i++) {
+            const c = cx.char(i)
+            if (c === 10 /* '\n' */) return -1
+            if (c === 93 /* ']' */ && cx.char(i + 1) === 93) {
+              end = i + 2
+              break
+            }
+          }
+          if (end < 0) return -1
+          // `[[ ]]`、`[[#标题]]`（目标为空）都不是双链。
+          const inner = cx.slice(pos + 2, end - 2).trim()
+          if (!inner || inner.startsWith('#')) return -1
+          const hash = inner.indexOf('#')
+          const target = hash < 0 ? inner : inner.slice(0, hash).trim()
+          if (!target) return -1
+          const targetFrom = pos + 2
+          const targetTo = hash < 0 ? end - 2 : targetFrom + target.length
+          // 节点结构：WikiLink( WikiLinkMark "[" "[" , URL 目标, WikiLinkMark "]" "]" )。
+          // URL 子节点让 live-preview 里的 data-href 提取和现有的 Link 走同一套认法。
+          return cx.addElement(
+            cx.elt('WikiLink', pos, end, [
+              cx.elt('WikiLinkMark', pos, pos + 2),
+              cx.elt('URL', targetFrom, targetTo),
+              cx.elt('WikiLinkMark', end - 2, end),
+            ]),
+          )
+        },
+      },
+    ],
+  },
+])
 
 const markdownBase = new Language(
   commonmarkLanguage.data,

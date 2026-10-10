@@ -594,6 +594,27 @@ pub async fn install_update(path: String) -> Result<bool, String> {
 /// relative links resolve against that), then asks for the tab here. The path is
 /// checked to exist and to be a file before anything is opened, so a link to
 /// something that moved reports a failure instead of opening an empty tab.
+
+#[tauri::command]
+pub async fn resolve_wiki_link(
+    window: WebviewWindow,
+    ctx: tauri::State<'_, AppCtx>,
+    dir: Option<String>,
+    target: String,
+) -> Result<Option<String>, String> {
+    let base_dir = match dir {
+        Some(d) => PathBuf::from(d),
+        None => {
+            let current = ctx.doc(window.label()).lock().expect("doc lock").file_path.clone();
+            current
+                .and_then(|p| Path::new(&p).parent().map(|d| d.to_path_buf()))
+                .unwrap_or_else(|| paths::home_dir().join("Documents"))
+        }
+    };
+    let found = fileio::resolve_wiki_link(&base_dir, &target);
+    Ok(found.map(|p| p.to_string_lossy().to_string()))
+}
+
 #[tauri::command]
 pub async fn open_markdown_link(window: WebviewWindow, path: String, fragment: Option<String>, line: Option<u32>) -> Result<bool, String> {
     let target = PathBuf::from(&path);

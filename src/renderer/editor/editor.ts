@@ -45,6 +45,11 @@ export function onEditorJumpPhase(listener: ((phase: EditorJumpPhase) => void) |
 // 打开本地 Markdown 链接的钩子。由 main.ts 装上，因为它要拿到当前文档路径（解析相对
 // 路径用）并走标签页那一套。返回 false 表示「这不是一个本地 Markdown 链接」，交给
 // 外壳按普通网址打开。编辑器层不认识标签页，所以做成钩子而不是直接调用。
+let wikiLinkOpener: ((target: string) => boolean | Promise<boolean>) | null = null
+export function onWikiLink(opener: ((target: string) => boolean | Promise<boolean>) | null): void {
+  wikiLinkOpener = opener
+}
+
 let localLinkOpener: ((href: string) => boolean) | null = null
 export function onLocalMarkdownLink(opener: ((href: string) => boolean) | null): void {
   localLinkOpener = opener
@@ -232,6 +237,11 @@ function installEditorInteractions(root: HTMLElement, view: EditorView): void {
     if (href && !href.startsWith('#')) {
       e.preventDefault()
       e.stopPropagation()
+      const isWiki = e.target instanceof HTMLElement && !!e.target.closest('[data-wikilink]')
+      if (isWiki && wikiLinkOpener) {
+        void wikiLinkOpener(href)
+        return
+      }
       if (!openLocalMarkdownLink(href)) window.loomark.openExternal(href)
     }
   }, true)

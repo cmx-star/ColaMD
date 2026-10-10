@@ -173,6 +173,111 @@ pub fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+
+/// 在 base_dir 及其子目录中寻找与 Wiki 链接目标匹配的 Markdown 文件。
+///
+/// 匹配规则：
+/// 1. 若 target 包含路径分隔符（如 `sub/note`），先按相对路径查找并尝试自动追加 `.md` 等扩展名。
+/// 2. 若 target 是单文件名（如 `note` 或 `note.md`）：
+///    - 先检查当前目录是否存在同名 .md 文件。
+///    - 若无，则对子目录进行深度优先搜索（跳过隐藏目录、node_modules、target 等大目录，最大深度 6 层）。
+pub fn resolve_wiki_link(base_dir: &Path, target: &str) -> Option<PathBuf> {
+    if target.trim().is_empty() {
+        return None;
+    }
+    let target = target.trim();
+
+    // 1. 若 target 包含子路径
+    if target.contains('/') || target.contains('\\') {
+        let direct = base_dir.join(target);
+        if direct.is_file() && is_markdown(&direct.to_string_lossy()) {
+            return Some(direct);
+        }
+        for ext in MARKDOWN_EXTENSIONS {
+            let with_ext = base_dir.join(format!("{target}{ext}"));
+            if with_ext.is_file() {
+                return Some(with_ext);
+            }
+        }
+        return None;
+    }
+
+    // 2. 裸文件名：优先当前目录
+    let target_lower = target.to_lowercase();
+    let target_stem_lower = if is_markdown(target) {
+        let p = Path::new(target);
+        p.file_stem().and_then(|s| s.to_str()).unwrap_or(target).to_lowercase()
+    } else {
+        target_lower.clone()
+    };
+
+    // 检查当前目录下直系文件
+    if let Ok(entries) = fs::read_dir(base_dir) {
+        for entry in entries.flatten() {
+            if let Ok(ft) = entry.file_type() {
+                if ft.is_file() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if is_markdown(&name) {
+                        let name_lower = name.to_lowercase();
+                        let stem_lower = Path::new(&name)
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or(&name)
+                            .to_lowercase();
+                        if name_lower == target_lower || stem_lower == target_stem_lower {
+                            return Some(entry.path());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 递归搜索子目录
+    fn search_subdirs(dir: &Path, target_lower: &str, target_stem_lower: &str, depth: usize) -> Option<PathBuf> {
+        if depth > 6 {
+            return None;
+        }
+        let Ok(entries) = fs::read_dir(dir) else {
+            return None;
+        };
+
+        let mut subdirs = Vec::new();
+        for entry in entries.flatten() {
+            let Ok(ft) = entry.file_type() else {
+                continue;
+            };
+            let name = entry.file_name().to_string_lossy().to_string();
+            if ft.is_dir() {
+                // 跳过隐藏目录和常见大目录
+                if name.starts_with('.') || name == "node_modules" || name == "target" || name == "dist" {
+                    continue;
+                }
+                subdirs.push(entry.path());
+            } else if ft.is_file() && is_markdown(&name) {
+                let name_lower = name.to_lowercase();
+                let stem_lower = Path::new(&name)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&name)
+                    .to_lowercase();
+                if name_lower == target_lower || stem_lower == target_stem_lower {
+                    return Some(entry.path());
+                }
+            }
+        }
+
+        for sub in subdirs {
+            if let Some(found) = search_subdirs(&sub, target_lower, target_stem_lower, depth + 1) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    search_subdirs(base_dir, &target_lower, &target_stem_lower, 1)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,4 +383,36 @@ mod tests {
         assert_eq!(suggest_file_name(None, Some("   \n\n")).as_deref(), None);
         assert_eq!(suggest_file_name(Some(Path::new("/tmp/My Note.md")), None).as_deref(), Some("My Note"));
     }
+
+    #[test]
+    fn resolve_wiki_link_matches_exact_and_stem_in_directory_and_subdirectories() {
+        let dir = temp_dir("wiki_links");
+        let sub = dir.join("nested");
+        fs::create_dir_all(&sub).expect("dir");
+        fs::write(dir.join("索引.md"), "index").expect("file");
+        fs::write(sub.join("深层笔记.markdown"), "nested").expect("file");
+
+        // 1. 同级无扩展名匹配
+        let r1 = resolve_wiki_link(&dir, "索引");
+        assert_eq!(r1, Some(dir.join("索引.md")));
+
+        // 2. 同级带扩展名匹配
+        let r2 = resolve_wiki_link(&dir, "索引.md");
+        assert_eq!(r2, Some(dir.join("索引.md")));
+
+        // 3. 子目录递归无扩展名匹配
+        let r3 = resolve_wiki_link(&dir, "深层笔记");
+        assert_eq!(r3, Some(sub.join("深层笔记.markdown")));
+
+        // 4. 相对路径形式匹配
+        let r4 = resolve_wiki_link(&dir, "nested/深层笔记");
+        assert_eq!(r4, Some(sub.join("深层笔记.markdown")));
+
+        // 5. 不存在的文件返回 None
+        let r5 = resolve_wiki_link(&dir, "不存在的文件");
+        assert_eq!(r5, None);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
 }

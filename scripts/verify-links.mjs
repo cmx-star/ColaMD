@@ -42,17 +42,20 @@ async function load() {
   for (const [name, entry] of [
     ['paths', 'src/renderer/editor/markdown-link.ts'],
     ['headings', 'src/renderer/editor/heading-anchor.ts'],
+    ['wiki', 'src/renderer/editor/wiki-link.ts'],
   ]) {
     await build({ entryPoints: [join(ROOT, entry)], bundle: true, platform: 'node', format: 'cjs', outfile: join(WORK, `${name}.cjs`), logLevel: 'silent' })
   }
   return {
     resolveMarkdownLink: require(join(WORK, 'paths.cjs')).resolveMarkdownLink,
     headingAnchorLine: require(join(WORK, 'headings.cjs')).headingAnchorLine,
+    parseWikiLink: require(join(WORK, 'wiki.cjs')).parseWikiLink,
+    hasMarkdownExtension: require(join(WORK, 'wiki.cjs')).hasMarkdownExtension,
   }
 }
 
 async function main() {
-  const { resolveMarkdownLink, headingAnchorLine } = await load()
+  const { resolveMarkdownLink, headingAnchorLine, parseWikiLink, hasMarkdownExtension } = await load()
   const source = join(WORK, 'notes', 'source.md')
 
   // --- 相对路径按「当前文档所在目录」解析，不是按 cwd ---
@@ -107,6 +110,33 @@ async function main() {
   ]) {
     check(`标题 ${fragment}`, () => assert.equal(headingAnchorLine(md, fragment), expected))
   }
+
+
+  // --- 双链解析：[[目标]] 与 [[目标#标题]] ---
+  check('双链 [[目标]]', () => {
+    assert.deepEqual(parseWikiLink('[[目标]]'), { target: '目标', fragment: '' })
+  })
+  check('双链 [[目标#章节]]', () => {
+    assert.deepEqual(parseWikiLink('[[目标#章节]]'), { target: '目标', fragment: '章节' })
+  })
+  check('双链 [[子目录/目标#章节]]', () => {
+    assert.deepEqual(parseWikiLink('[[子目录/目标#章节]]'), { target: '子目录/目标', fragment: '章节' })
+  })
+  check('双链 [[目标.md]]', () => {
+    assert.deepEqual(parseWikiLink('[[目标.md]]'), { target: '目标.md', fragment: '' })
+    assert.equal(hasMarkdownExtension('目标.md'), true)
+    assert.equal(hasMarkdownExtension('目标'), false)
+  })
+  check('双链拒绝网络链接 [[http://example.com]]', () => {
+    assert.equal(parseWikiLink('[[http://example.com]]'), null)
+  })
+  check('双链拒绝空目标与只有片段 [[#标题]]', () => {
+    assert.equal(parseWikiLink('[[#标题]]'), null)
+    assert.equal(parseWikiLink('[[   ]]'), null)
+  })
+  check('双链拒绝单中括号 [链接]', () => {
+    assert.equal(parseWikiLink('[链接]'), null)
+  })
 
   console.log(failures ? `\n✗ ${failures} 条不通过（${passed} 条通过）` : `\n✓ ${passed} 条全部通过`)
   if (failures) process.exitCode = 1

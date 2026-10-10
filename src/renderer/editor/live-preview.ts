@@ -755,6 +755,33 @@ function collectTables(state: EditorState, ranges: DecorationRange[], front: Ran
  * 文字上带 `data-href`，而不是把整段换成 `<a>` widget：换成 widget 的话，链接文字里的
  * 加粗、行内代码就全没了。点击行为在 editor.ts 里，它认 `data-href`。
  */
+
+/**
+ * 双链画成链接。
+ *
+ * `[[目标]]` / `[[目标#标题]]` 在非编辑行隐藏前后 `[[` 与 `]]`，
+ * 中间的目标文字标上 `cm-md-link` 与 `data-wikilink="true"`。
+ */
+function collectWikiLinks(state: EditorState, ranges: DecorationRange[], front: Range | null): void {
+  iterateContent(state, front, (node) => {
+    if (node.name !== "WikiLink") return
+    if (isActiveRange(state, node.from, node.to)) return false
+    // 隐藏开头的 `[[` 与结尾的 `]]`
+    ranges.push({ from: node.from, to: node.from + 2, deco: hide(node.from, node.from + 2) })
+    ranges.push({ from: node.to - 2, to: node.to, deco: hide(node.to - 2, node.to) })
+    const inner = state.doc.sliceString(node.from + 2, node.to - 2)
+    ranges.push({
+      from: node.from + 2,
+      to: node.to - 2,
+      deco: MARK({
+        class: "cm-md-link cm-md-wikilink",
+        attributes: { "data-href": inner, "data-wikilink": "true" },
+      }),
+    })
+    return false
+  })
+}
+
 function collectLinks(state: EditorState, ranges: DecorationRange[], front: Range | null): void {
   iterateContent(state, front, (node) => {
     if (node.name !== 'Link') return
@@ -1155,6 +1182,7 @@ function buildDecorations(state: EditorState, flash: { from: number; to: number 
   }
 
   collectBlocks(state, ranges, front)
+  collectWikiLinks(state, ranges, front)
   collectLinks(state, ranges, front)
   collectFootnotes(state, ranges, front)
   collectHTML(state, ranges, front)

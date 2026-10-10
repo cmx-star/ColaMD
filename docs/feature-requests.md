@@ -259,6 +259,38 @@ Rule kept: exactly nine cards. The order is documented in an HTML comment above 
 
 ## Candidates
 
+### Wiki links (`[[文件名]]` and `[[文件名#标题]]`)
+
+**Source:** direct request 2026-10-10 (Chinese: 需要 Obsidian 风格双链)
+
+**Status: ACCEPTED — scheduled.** A `[[文件名]]` (optionally with `#标题`) in rendered mode
+should be clickable and open the matching Markdown file in the current directory or its
+subdirectories. Scope is deliberately narrow, matching the "如非必要，勿增实体" principle:
+jump-on-click only. No backlink panel, no graph view, no aliases beyond the plain
+`[[目标]]` / `[[目标#标题]]` forms, no whole-vault index. The link resolves relative to the
+current document's directory, the same way `[文字](地址)` links already do.
+
+Declined for now (recorded, not silent): backlinks panel, graph view, `[[别名|目标]]`,
+global vault search.
+
+### Git sync via GitHub / Gitee
+
+**Source:** direct request 2026-10-10 (Chinese: 同步采用 github/gitee)
+
+**Status: DEFERRED.** User decided to postpone sync and prioritize polishing editor
+feel and core Markdown features (Wiki links, table editing, etc.) first. When resumed,
+it will support user-chosen local directory repository binding rather than fixing to default documents.
+
+### Typora-style small interactions (table/image drag)
+
+**Source:** direct request 2026-10-10 (Chinese: Typora 表格/图片拖拽等小交互)
+
+**Status: CANDIDATE — evaluated per item, not committed as a bundle.** Each of these is an
+independent UI change that must pass the "如非必要，勿增实体" check on its own. Items to
+evaluate separately, in order of likely value: drag an image file into the editor to insert
+a reference (destination policy for assets TBD); drag table rows/columns to reorder;
+table right-click insert/delete row/column. None is scheduled; each needs its own decision.
+
 ### Selecting text inside a rendered table
 
 **Source:** reported 2026-10-09 (Chinese: "md 渲染模式没法选中表格文字")

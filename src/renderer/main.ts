@@ -1,9 +1,10 @@
-import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
+import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, onWikiLink, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
 import { markdownForWord } from './editor/mermaid-export'
 import { toBase64 } from './export/base64'
 import { documentHTMLFrom } from './editor/clean-html'
 import { jumpToSourceLine } from './editor/source-line'
 import { resolveMarkdownLink } from './editor/markdown-link'
+import { parseWikiLink } from './editor/wiki-link'
 import { isPresenting, startSlideshow, stopSlideshow } from './slideshow'
 import { enterPrintLayout, exitPrintLayout } from './slides-export'
 import { enterPaperLayout, exitPaperLayout } from './print-layout'
@@ -2259,6 +2260,23 @@ async function init(): Promise<void> {
   onLocalMarkdownLink((href) => {
     if (!resolveMarkdownLink(href, currentFilePath)) return false
     openMarkdownLink(href)
+    return true
+  })
+
+  onWikiLink(async (raw) => {
+    const text = raw.startsWith('[[') ? raw : `[[${raw}]]`
+    const parsed = parseWikiLink(text)
+    if (!parsed) return false
+    const cut = currentFilePath ? Math.max(currentFilePath.lastIndexOf('/'), currentFilePath.lastIndexOf('\\')) : -1
+    const dir = cut >= 0 ? currentFilePath!.slice(0, cut) : undefined
+    const resolved = await window.loomark.resolveWikiLink?.(parsed.target, dir)
+    if (!resolved) {
+      const message = `[wikilink] could not resolve [[${parsed.target}]]`
+      console.warn(message)
+      void window.loomark.logRendererError?.(message)
+      return false
+    }
+    void window.loomark.openMarkdownLink(resolved, parsed.fragment)
     return true
   })
 
