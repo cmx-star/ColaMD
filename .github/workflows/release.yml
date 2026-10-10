@@ -45,6 +45,10 @@ jobs:
           node-version: 20
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          # The x86_64 macOS runner has no x86_64 target installed by default;
+          # install the matrix target so `--target x86_64-apple-darwin` works.
+          targets: ${{ matrix.target }}
 
       # The Linux shell is a WebKitGTK window, so the runner needs the development
       # packages that Tauri links against.
@@ -61,7 +65,10 @@ jobs:
         shell: bash
         env:
           # Signing and notarization are optional here: without the secrets the build
-          # still produces working bundles, only unsigned ones.
+          # still produces working bundles, only unsigned ones. The empty-string
+          # fallback matters — an empty APPLE_CERTIFICATE would still be treated as a
+          # certificate by the import step and fail, so only pass each secret when it
+          # is actually set.
           APPLE_CERTIFICATE: ${{ matrix.platform == 'mac' && secrets.APPLE_CERTIFICATE || '' }}
           APPLE_CERTIFICATE_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
           APPLE_SIGNING_IDENTITY: ${{ matrix.platform == 'mac' && secrets.APPLE_SIGNING_IDENTITY || '' }}
@@ -78,6 +85,12 @@ jobs:
           # explicitly, it is the only case where one runner produces one installer.
           if [ "${{ matrix.platform }}" = "mac" ] && [ "${{ inputs.mac_arch || 'separate' }}" = "universal" ]; then
             TARGET_ARGS="--target universal-apple-darwin"
+          fi
+          # An empty certificate is not a certificate: clear every signing variable so
+          # tauri skips signing entirely instead of feeding "" to `security import`.
+          if [ "${{ matrix.platform }}" = "mac" ] && [ -z "${APPLE_CERTIFICATE:-}" ]; then
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                  APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
           fi
           npx tauri build $TARGET_ARGS
 

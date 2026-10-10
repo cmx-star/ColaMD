@@ -68,7 +68,11 @@ fn configure(
     if let Some(bounds) = geometry {
         builder = builder.position(bounds.x, bounds.y);
     }
-    if cfg!(target_os = "macos") {
+    // `title_bar_style` and friends are macOS-only methods, so gate them at
+    // compile time rather than with a runtime `cfg!()` check: `cfg!()` still
+    // compiles the branch, which breaks non-macOS targets (2026-10-10).
+    #[cfg(target_os = "macos")]
+    {
         builder
             .title_bar_style(tauri::TitleBarStyle::Overlay)
             .hidden_title(true)
@@ -77,7 +81,9 @@ fn configure(
             // lights' centre (it grows the title bar container to `button height + y`,
             // and the buttons centre in it). A 36-point row puts the centre at 18.
             .traffic_light_position(tauri::LogicalPosition::new(16.0, 18.0))
-    } else {
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
         builder
     }
 }
