@@ -4,6 +4,14 @@
 
 ---
 
+## v2.8.4 · 安装包真正随发布上线
+
+上一版把三端安装包都构建出来了，但发布页只挂了 Source code，安装包没随 release 一起出来：发布步骤用 `artifacts/*` 去取下载下来的安装包，而下载回来的是带目录结构的 `src-tauri/target/.../bundle/...`，那个 glob 只匹配到目录本身，一个文件都没挂上去，还悄无声息地成功。这一版改成递归匹配 `artifacts/**/*`，并加了一道兜底检查：发布前若发现一个安装包都没有，直接判失败，不再可能静默发一个空 release。
+
+同时清理掉 Electron 时代的遗留：删掉 electron-builder 的 afterPack 钩子脚本（迁到 Tauri 后早已无人引用），以及一条指向已删除脚本的悬空验收命令。Windows/Linux 构建时那条 dead-code 警告（`first_quoted` 只在 macOS 用）也一并消除。
+
+---
+
 ## v2.8.3 · 修复三端构建，正式发布
 
 上一版（v2.8.2）依然没能把 macOS、Windows、Linux 的安装包全构建出来，这一版把四处构建故障都修掉：macOS x86_64 目标没安装、macOS 签名证书为空时被当成有效证书导入、Windows 缺图标文件、Linux 上误用了 macOS 专属的标题栏接口。修好后四个平台的安装包都能正常产出。

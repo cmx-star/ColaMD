@@ -1,6 +1,6 @@
 {
   "name": "loomark",
-  "version": "2.8.3",
+  "version": "2.8.4",
   "description": "A free, elegant Markdown editor for macOS, Windows and Linux. Simple by design, always in sync with the file on disk.",
   "author": {
     "name": "marswave.ai",
@@ -26,7 +26,6 @@
     "verify:export-pdf": "COLAMD_VERIFY_CHECK=export-pdf node scripts/verify-export.mjs",
     "verify:export-word": "COLAMD_VERIFY_CHECK=export-docx node scripts/verify-export.mjs",
     "verify:features": "node scripts/verify-features.mjs",
-    "verify:image-export": "node scripts/verify-image-export.mjs",
     "verify:links": "node scripts/verify-links.mjs",
     "verify:markdown": "node scripts/verify-markdown.mjs",
     "verify:scroll-render": "node scripts/verify-scroll-render.mjs",
