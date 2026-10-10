@@ -2,7 +2,7 @@
 
 > A free, elegant Markdown editor anyone can pick up. No toolbars, no clutter, and the file on disk is always what you see.
 
-**Language / 语言: [English](README.md) · [中文](README_CN.md)** · [Website](https://colamd.com/)
+**Language / 语言: [English](README.md) · [中文](README_CN.md)** · [Website](https://loomark.starcmx.com/)
 
 ColaMD is an open-source, free, elegant Markdown editor for writing, notes, and documentation. It is built for people who just want to write: no toolbars, no status bar, nothing to configure: the window holds a title bar, your text, and a file list.
 

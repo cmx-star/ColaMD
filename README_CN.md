@@ -2,7 +2,7 @@
 
 > 一款免费、优雅、谁都能上手的 Markdown 编辑器。没有工具栏，没有多余的东西，而且文件永远是最新的。
 
-**Language / 语言: [English](README.md) · [中文](README_CN.md)** · [官网](https://colamd.com/)
+**Language / 语言: [English](README.md) · [中文](README_CN.md)** · [官网](https://loomark.starcmx.com/)
 
 ColaMD 是一款开源、免费、优雅的 Markdown 编辑器，用于写作、记录和文档。它为「只想好好写字」的人而做：没有工具栏、没有状态栏、不需要任何配置：窗口里只有标题栏、你的文字和文件列表。
 

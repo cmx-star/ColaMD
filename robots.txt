@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://colamd.com/sitemap.xml
+Sitemap: https://loomark.starcmx.com/sitemap.xml
