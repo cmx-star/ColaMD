@@ -128,6 +128,12 @@ export interface LoomarkApi {
   onUpdateError: (callback: () => void) => void
   downloadUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
+  /** Ask the shell to check GitHub; resolves with update info or null when
+   *  this build is current. Rejects on network failure. */
+  checkForUpdates: () => Promise<{ version: string; url: string; path: string; downloaded: boolean } | null>
+  /** Menu → 帮助 → 检查更新: the shell relays the click; the renderer drives
+   *  the same flow the update banner uses. */
+  onMenuCheckUpdates: (callback: () => void) => void
   reportDirty: (isDirty: boolean) => void
   /** Verification channel: run the named check in the page and report the result.
    *  It exists because the acceptance scripts used to drive the app over the Chrome

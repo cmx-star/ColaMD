@@ -3,8 +3,8 @@
 // Ported from the Electron build's buildMenu (src/main/index.ts, 355 lines). The
 // structure is the same on purpose: the same submenus, the same accelerators, and
 // the same route for anything the renderer owns, which is an event on the focused
-// window. Two deliberate differences are noted inline: the update items stay
-// disabled until the updater lands (P4), and "Set as Default App" is not ported yet.
+// window. Two deliberate differences are noted inline: "Set as Default App" is
+// not ported yet.
 
 use tauri::menu::{AboutMetadataBuilder, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager};
@@ -414,7 +414,6 @@ fn build_inner(
 
     // --- Help ---------------------------------------------------------------
     let check_updates = MenuItemBuilder::with_id("help-check-updates", t("检查更新...", "Check for Updates..."))
-        .enabled(false)
         .build(app)?;
     let about = PredefinedMenuItem::about(
         app,
@@ -485,6 +484,7 @@ pub fn handle_event(app: &AppHandle, id: &str) {
             recent::set_restore_on_launch(!recent::restore_on_launch());
             build(app);
         }
+        "help-check-updates" => emit("menu-check-updates", None),
         "edit-find" => emit("editor:search", None),
         // The renderer owns the document's font size; these just tell it which way
         // to step. `0` means "back to the theme's default", and keeps a font family

@@ -25,6 +25,7 @@ mod recovery;
 mod state;
 mod themes;
 mod trace;
+mod update;
 mod watcher;
 mod windowstate;
 mod windows;
@@ -236,6 +237,9 @@ fn main() {
             export::export_image,
             export::export_docx,
             export::report_export_failure,
+            commands::check_for_update,
+            commands::download_update,
+            commands::install_update,
         ])
         .on_menu_event(|app, event| menu::handle_event(app, event.id().as_ref()))
         .setup(|app| {
@@ -291,6 +295,11 @@ fn main() {
 /// `path_from_args()`。少了这一条，那些入口打开的文件根本不会出现在窗口里
 /// （2026-10-09 发现）。
 fn handle_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
+    // Leaving with a downloaded-but-not-installed update? Open the installer on
+    // the way out so the upgrade happens without another manual step.
+    if matches!(event, tauri::RunEvent::Exit) {
+        crate::update::launch_pending_installer();
+    }
     #[cfg(target_os = "macos")]
     {
         if let tauri::RunEvent::Opened { urls } = &event {
@@ -320,5 +329,5 @@ fn handle_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
             }
         }
     }
-    let _ = (app, event);
+    let _ = app;
 }

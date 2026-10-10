@@ -21,6 +21,43 @@ import type {
 /** Names already reported, so one stub does not fill the console. */
 const reported = new Set<string>()
 
+// --- update flow plumbing -----------------------------------------------------
+// The shell owns the real state; the banner callbacks in main.ts just consume
+// events. These three keep the event names and the last-known installer path
+// in one place.
+
+interface UpdateInfoPayload {
+  version: string
+  currentVersion: string
+  tag: string
+  url: string
+  assetName: string
+  path: string
+  downloaded: boolean
+}
+
+interface ProgressPayload {
+  percentage: number
+  downloaded: number
+  total: number
+}
+
+/** Path of the most recently checked/downloaded installer, used by installUpdate. */
+let lastInstallerPath = ''
+
+/** The Rust side emits progress with a structured payload; the renderer API
+ *  contract (platform-api.ts) is a plain percent, so the adapter flattens it. */
+function bindUpdateEvents(): void {
+  void listen<ProgressPayload>('update-progress', (message) => {
+    window.dispatchEvent(new CustomEvent('update-progress-percent', { detail: Math.round(message.payload.percentage) }))
+  }).catch(() => undefined)
+}
+void bindUpdateEvents()
+
+function emitUpdate(event: string, version: string): void {
+  window.dispatchEvent(new CustomEvent(event, { detail: version }))
+}
+
 function notYet(name: string): void {
   if (reported.has(name)) return
   reported.add(name)
@@ -179,12 +216,25 @@ export function createTauriApi(): LoomarkApi {
     },
 
     // --- Update flow --------------------------------------------------------
+    // Check → download (progress via `update-progress` events) → open the
+    // installer. Payload shapes come from src-tauri/src/update.rs.
+    checkForUpdates: async () => {
+      const info = await invoke<UpdateInfoPayload | null>('check_for_update')
+      if (info) {
+        lastInstallerPath = info.path
+        emitUpdate('update-available', info.version)
+      }
+      return info
+    },
     downloadUpdate: async () => {
-      notYet('downloadUpdate')
+      const info = await invoke<UpdateInfoPayload>('download_update')
+      lastInstallerPath = info.path
+      emitUpdate('update-downloaded', info.version)
     },
     installUpdate: async () => {
-      notYet('installUpdate')
+      await invoke('install_update', { path: lastInstallerPath })
     },
+    onMenuCheckUpdates: (callback) => on<void>('menu-check-updates', () => callback()),
 
     // --- Save/close handshake ----------------------------------------------
     respondDocumentState: (requestId: string, snapshot: { dirty: boolean; content: string; tabs?: { path: string | null; content: string }[] }) => {
@@ -229,10 +279,10 @@ export function createTauriApi(): LoomarkApi {
     onMenuExportImage: (callback) => on<ImageExportPreset>('menu-export-image', callback),
     onMenuPlaySlideshow: (callback) => on<void>('menu-play-slideshow', () => callback()),
     onMenuImportTheme: (callback) => on<void>('menu-import-theme', () => callback()),
-    onUpdateAvailable: () => notYet('onUpdateAvailable'),
-    onUpdateDownloaded: () => notYet('onUpdateDownloaded'),
-    onUpdateProgress: () => notYet('onUpdateProgress'),
-    onUpdateError: () => notYet('onUpdateError'),
+    onUpdateAvailable: (callback) => on<string>('update-available', callback),
+    onUpdateDownloaded: (callback) => on<string>('update-downloaded', callback),
+    onUpdateProgress: (callback) => on<number>('update-progress-percent', callback),
+    onUpdateError: (callback) => on<void>('update-error', callback),
     onSetTheme: (callback) => on<string>('set-theme', callback),
     onSetCustomCSS: (callback) => on<string>('set-custom-css', callback),
     onSetPanelSide: (callback) => on<string>('set-panel-side', callback),

@@ -1,6 +1,6 @@
 [package]
 name = "loomark"
-version = "2.8.5"
+version = "2.8.6"
 description = "A free, elegant Markdown editor for macOS, Windows and Linux"
 authors = ["marswave.ai"]
 edition = "2021"
@@ -21,7 +21,11 @@ rfd = "0.15"
 time = { version = "0.3", features = ["local-offset"] }
 tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
 tauri-plugin-clipboard-manager = "2.1.0-beta.7"
-tauri-plugin-updater = "2.0.0-rc.4"
+# 桌面自更新：GitHub 页面解析 + 流式下载 + SHA-256 校验（见 update.rs）。
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+futures-util = "0.3"
+sha2 = "0.10"
+semver = "1"
 # 导出 PDF / 图片 / Word 时渲染侧把产物以 base64 交过来（见 export.rs）。
 # 版本跟随依赖树里已有的那份，不引入重复依赖。
 base64 = "0.22"

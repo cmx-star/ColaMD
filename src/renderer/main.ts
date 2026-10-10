@@ -2345,6 +2345,8 @@ async function init(): Promise<void> {
     '2.7.1-beta.1': { zh: '选中一段不再翻成源码', en: 'selections stay rendered' }
   }
   let updateDownloaded = false
+  let updateVersion = ''
+  let updateBusy = false
   function showUpdateBanner(version: string): void {
     const zh = isChinese()
     const note = UPDATE_NOTES[version]
@@ -2357,7 +2359,45 @@ async function init(): Promise<void> {
     updateBannerEl().hidden = false
   }
 
+  /** One flow serves both the menu item and the banner button: check first,
+   *  then let the user start the download from the banner. */
+  async function runUpdateCheck(): Promise<void> {
+    if (updateBusy) return
+    updateBusy = true
+    const zh = isChinese()
+    updateBannerTextEl().textContent = zh ? '正在检查更新…' : 'Checking for updates…'
+    updateBannerActionEl().textContent = zh ? '检查中' : 'Checking'
+    updateBannerActionEl().disabled = true
+    updateBannerEl().hidden = false
+    try {
+      const info = await api.checkForUpdates()
+      if (!info) {
+        updateBannerTextEl().textContent = zh ? '已是最新版本' : 'You are up to date'
+        updateBannerActionEl().hidden = true
+        window.setTimeout(() => {
+          updateBannerEl().hidden = true
+          updateBannerActionEl().hidden = false
+        }, 3000)
+      } else {
+        updateVersion = info.version
+        updateDownloaded = info.downloaded
+        showUpdateBanner(info.version)
+      }
+    } catch {
+      updateBannerTextEl().textContent = zh ? '检查更新失败，请稍后重试' : 'Update check failed'
+      updateBannerActionEl().hidden = true
+      window.setTimeout(() => {
+        updateBannerEl().hidden = true
+        updateBannerActionEl().hidden = false
+      }, 3000)
+    } finally {
+      updateBusy = false
+    }
+  }
+  api.onMenuCheckUpdates(() => void runUpdateCheck())
+
   api.onUpdateAvailable((version) => {
+    updateVersion = version
     updateDownloaded = false
     showUpdateBanner(version)
   })
@@ -2376,19 +2416,27 @@ async function init(): Promise<void> {
   })
 
   updateBannerActionEl().addEventListener('click', async () => {
+    if (updateBusy) return
     if (updateDownloaded) {
       await api.installUpdate()
-    } else {
-      updateBannerActionEl().textContent = isChinese() ? '下载中…' : 'Downloading…'
-      updateBannerActionEl().disabled = true
-      try {
-        await api.downloadUpdate()
-      } catch {
-        // The 'update-error' event may already have reset the label; this
-        // catch covers the path where the IPC call itself rejects.
-        updateBannerActionEl().textContent = isChinese() ? '下载失败，点击重试' : 'Failed, retry'
-        updateBannerActionEl().disabled = false
-      }
+      return
+    }
+    if (!updateVersion) {
+      void runUpdateCheck()
+      return
+    }
+    updateBusy = true
+    updateBannerActionEl().textContent = isChinese() ? '下载中…' : 'Downloading…'
+    updateBannerActionEl().disabled = true
+    try {
+      await api.downloadUpdate()
+    } catch {
+      // The 'update-error' event may already have reset the label; this
+      // catch covers the path where the IPC call itself rejects.
+      updateBannerActionEl().textContent = isChinese() ? '下载失败，点击重试' : 'Failed, retry'
+      updateBannerActionEl().disabled = false
+    } finally {
+      updateBusy = false
     }
   })
   document.getElementById('update-banner-dismiss')!.addEventListener('click', () => {
