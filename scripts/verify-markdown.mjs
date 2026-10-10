@@ -283,7 +283,6 @@ const windowStub = {
   innerHeight: 900,
   devicePixelRatio: 1,
   localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-  electronAPI: {},
   ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
   MutationObserver: class { observe() {} disconnect() {} takeRecords() { return [] } },
   DOMParser: class { parseFromString() { return { body: el(), documentElement: el(), querySelector: () => null, querySelectorAll: () => [] } } },

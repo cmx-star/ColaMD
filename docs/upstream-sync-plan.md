@@ -6,6 +6,29 @@
 - 目标上游：`upstream/main` `1e9b481`（v2.7.6），共 41 个提交
 - 相关文档：[editor-architecture.md](editor-architecture.md)、[tauri-migration-plan.md](tauri-migration-plan.md)
 
+## 同步检查记录
+
+### 2026-10-10：上游无新内容可同步，本地已领先
+
+按 `git fetch upstream` 后的实测，同步检查结论如下。
+
+- **远端分支是 `main`，不是 `master`**。本仓库 `cmx-star/ColaMD` 有 `origin/main`（自己的 fork）与 `upstream/main`（上游 `marswaveai/colamd`）；本地 `master` 是历史遗留，远端没有对应分支。
+- **两边已完全分叉**，不是谁领先谁的关系：共同祖先 `5e0f3c3`（v2.7.2 之后），分叉后上游 41 个提交、本地 42 个提交，各自独立演进。
+- **上游停在 v2.7.6**（最新提交 `1e9b481`，test(harness) 屏外窗口），之后没有任何新提交。
+- **本地已领先上游**：`main` 版本号 2.8.3 > 上游 2.7.6。上游那 41 个提交已在本轮同步（`5e0f3c3` 之后）逐条落地（见第 0 节执行记录），无新的、未采纳的上游提交可供 `merge` / `rebase`。
+- **结论**：当前没有可同步进来的新内容。若上游后续在 `upstream/main` 发新提交，再跑一次 `git fetch upstream` 比对。
+
+执行记录里两处状态以本次实测为准更新：E11 `verify:themes` 已存在（`package.json` 含 `verify:themes`，脚本 `scripts/verify-themes.mjs` 已就位），为「已完成」；第 9 节「三个 Electron 脚本」里，`verify-export-pdf.mjs`、`verify-image-export.mjs` 已被 `verify-export.mjs`（新通道，`COLAMD_VERIFY_CHECK`）取代并删除（2026-10-10），`verify-features.mjs` 也在同日从 Electron CDP 迁到 COLAMD_VERIFY 通道（探针随包编译进 `src/renderer/verify/features-check.ts`，脚本 spawn Tauri 二进制读 `COLAMD_VERIFY_OUT`）。迁移后实测 37 条断言里 35 条通过，剩 2 条是「本地图片」的已知缺口（asset 协议下相对路径图片加载失败），见下方「三个 Electron 脚本迁移完成」与脚本头注释。
+
+### 2026-10-10：三个 Electron 脚本迁移完成（遗留一节收尾）
+
+第 9 节记的「三个 Electron 脚本」到此全部处置完毕：
+
+- `verify-export-pdf.mjs`、`verify-image-export.mjs`：已删除，功能由新通道 `verify-export.mjs` 取代。
+- `verify-features.mjs`：已迁到 COLAMD_VERIFY 通道。探针源码（原 MEASURE / COPY_PROBE / SELECT_ALL / CHEATSHEET_MEASURE）改写进随包编译的 `src/renderer/verify/features-check.ts`，注册为 `CHECKS.features`；脚本 spawn Tauri 二进制 + `COLAMD_VERIFY=features`，判红绿在脚本侧。交互（Tab 缩进、任务勾选、选区复制）改用编辑器自己的 `view.dispatch` 驱动，比旧脚本的 CDP 真键盘更贴近真实路径；系统剪贴板那一条断言（依赖 Browser.grantPermissions）删掉，只保留 copy 事件里 DataTransfer 两个口味的断言。
+- 两处判据随产品现状改了口径：`属性区压淡` 改为 `属性区收起`（E9 之后属性区不再压淡，而是光标不在里面就不渲染）；剪贴板断言只看 DataTransfer。
+- 迁移暴露一个**产品缺口**：本地相对路径图片在 asset 协议下加载失败（`resolveImageSrc` 拿 `convertFileSrc(文档)` 当 base 去 `new URL(相对路径, base)`，Tauri v2 asset 协议不这么解析兄弟文件）。两条相关断言保留、红着，作为这个缺口的提醒；修它属于产品行为变更，另起活。
+
 ## 0. 执行记录
 
 | 项 | 状态 | 提交 |
@@ -19,8 +42,8 @@
 | E8 本地链接跳转（渲染层 + Tauri 命令） | 已完成 | `9d3300e` |
 | E12 固定工作目录、E13 构建新鲜度、E14 模板 | 已完成 | `2d168e6`、`61c9df2` |
 | E15 约定与 changelog | 已完成 | `61c9df2` |
-| E11 `verify:themes` | 进行中 | — |
-| 三个 Electron 脚本迁移 | 未开始（见第 9 节） | — |
+| E11 `verify:themes` | 已完成 | — |
+| 三个 Electron 脚本迁移 | 已完成（见「同步检查记录 · 2026-10-10」） | — |
 
 ### 执行中发现的偏差
 

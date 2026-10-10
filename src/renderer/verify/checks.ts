@@ -8,6 +8,7 @@
 // 名字由环境变量 COLAMD_VERIFY 传给壳，结果写到 COLAMD_VERIFY_OUT。
 
 import { runExportCheck } from './export-check'
+import { runFeaturesCheck } from './features-check'
 
 export interface ScrollSample {
   position: number
@@ -334,6 +335,7 @@ export async function runThemeCheckSuite(files: Record<string, string>): Promise
 export const CHECKS: Record<string, () => Promise<unknown>> = {
   'scroll-render': () => runScrollRenderCheck(),
   themes: () => runThemeCheckSuite(window.__loomarkVerifyThemes ?? {}),
+  features: () => runFeaturesCheck(),
   // 三条导出共用一份检查：量的是同一条渲染链路（文档 → 位图 → 字节），
   // 分开只是让脚本按名字要哪一条都能拿到同一份数据。
   'export-pdf': () => runExportCheck(),

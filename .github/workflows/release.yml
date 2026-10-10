@@ -132,6 +132,23 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # `download-artifact` keeps the artifacts' directory structure, so the
+      # installers land at `artifacts/src-tauri/target/.../bundle/*/...`, not at
+      # the top level. `artifacts/*` therefore matched only the `src-tauri`
+      # directory and softprops attached nothing — publishing an empty release
+      # without failing. Fail loudly here instead of shipping a release with no
+      # installers (2026-10-10).
+      - name: Check the installers are present
+        run: |
+          set -euo pipefail
+          count=$(find artifacts -type f \( -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.exe' \
+            -o -name '*.msi' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error title=No installers::no bundle files found under artifacts/"
+            exit 1
+          fi
+          echo "found $count installer(s) to attach"
+
       # The version's section in resources/demo/changelog.md is what users
       # read in the app, so it is also what they read on the release page.
       # GitHub's generated notes only ever listed merge commits.
@@ -167,7 +184,7 @@ jobs:
         if: steps.notes.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/**/*
           body_path: ${{ runner.temp }}/notes.md
           prerelease: ${{ vars.COLAMD_PRERELEASE == 'true' }}
 
@@ -178,6 +195,6 @@ jobs:
         if: steps.notes.outputs.found != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/**/*
           generate_release_notes: true
           prerelease: ${{ vars.COLAMD_PRERELEASE == 'true' }}

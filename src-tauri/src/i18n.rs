@@ -97,6 +97,10 @@ pub fn set_code(language: &str) -> bool {
 }
 
 /// The first `"…"` token in a string, used for the defaults output.
+///
+/// Only macOS reads the `defaults` output, so this helper is compiled only there;
+/// elsewhere it would be dead code and trip `#[warn(dead_code)]` (2026-10-10).
+#[cfg(target_os = "macos")]
 fn first_quoted(text: &str) -> Option<String> {
     let start = text.find('"')?;
     let rest = &text[start + 1..];
@@ -115,6 +119,7 @@ mod tests {
         assert!(picked == zh || picked == en);
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn the_preferred_language_is_the_first_quoted_tag() {
         let output = "(\n    \"zh-Hans-CN\"\n)\n";
