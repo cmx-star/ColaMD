@@ -505,7 +505,6 @@ function showBlankDocument(): void {
   resetDirty()
   updateFileTitle()
   updatePanelVisibility()
-  void refreshSiblings()
   scheduleOutlineUpdate()
   editorScroller().scrollTop = 0
   sourceEl().scrollTop = 0
@@ -1341,6 +1340,9 @@ function togglePanel(): void {
   manualHidden = !manualHidden
   localStorage.setItem('file-panel-hidden', manualHidden ? '1' : '0')
   updatePanelVisibility()
+  // 打开面板（从隐藏到显示）时才列目录：首次启动不读目录，也就不会一打开就
+  // 弹「读取文稿 / 根目录」的授权框。权限在用户主动打开面板这一刻才申请。
+  if (!manualHidden) void refreshSiblings()
 }
 
 // Drag the panel's inner edge to resize it; the width clamps to the
@@ -2001,9 +2003,10 @@ async function toggleSlideshow(): Promise<void> {
 
 async function init(): Promise<void> {
   const api = window.loomark
-  // macOS keeps its own overlay scrollbars (drawn while you scroll, no layout
-  // space, never in the way). The thin custom scrollbar is only for Windows and
-  // Linux, where the platform default is a chunky always-on bar.
+  // The thin themed scrollbar in base.css covers every platform now: macOS's
+  // native overlay bars follow the system appearance, not the theme, which
+  // painted a bright white track on dark themes. The class still matters for
+  // the titlebar padding rules.
   if (!/^Mac/i.test(navigator.platform)) document.body.classList.add('platform-non-mac')
   // Windows has no traffic lights on the left and draws its window controls inside
   // the row on the right (titleBarOverlay), so it needs both ends of the row told
@@ -2260,7 +2263,6 @@ async function init(): Promise<void> {
   })
 
   updatePanelVisibility()
-  await refreshSiblings()
 
   api.onMenuOpen(async () => {
     // 'file-opened' event drives the content load (and file-panel refresh)

@@ -15,7 +15,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "**"
+          "$HOME/**"
         ]
       }
     }
