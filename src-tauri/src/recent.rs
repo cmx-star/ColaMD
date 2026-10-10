@@ -31,8 +31,9 @@ fn write_store(store: &Value) -> bool {
     std::fs::write(&path, store.to_string()).is_ok()
 }
 
-/// Record a document as most recently used.
-pub fn remember(file_path: &Path) {
+/// Record a document as most recently used. Returns true when the list moved,
+/// which is when the menu showing the old order is stale.
+pub fn remember(file_path: &Path) -> bool {
     let file_path = file_path.to_string_lossy().to_string();
     let mut store = read_store();
     let previous: Vec<String> = store
@@ -46,10 +47,11 @@ pub fn remember(file_path: &Path) {
     next.truncate(LIMIT);
 
     if next == previous {
-        return;
+        return false;
     }
     store["recent"] = serde_json::json!(next);
     write_store(&store);
+    true
 }
 
 /// The list as the menu should show it: existing files only, newest first.

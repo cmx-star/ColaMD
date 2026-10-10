@@ -171,7 +171,9 @@ pub async fn load_path_into(app: &AppHandle, window: &WebviewWindow, ctx: &AppCt
     }
     install_watcher(window, ctx, path.to_path_buf());
     update_window_title(window, path);
-    crate::recent::remember(path);
+    if crate::recent::remember(path) {
+        crate::menu::build(app);
+    }
     let payload = OpenedDocument { path: Some(path.to_string_lossy().to_string()), content: data.content.clone() };
     trace(|| format!("opened {} ({} bytes)", path.display(), data.content.len()));
     let _ = window.emit("file-opened", payload.clone());
@@ -250,7 +252,9 @@ pub async fn activate_file(window: WebviewWindow, ctx: tauri::State<'_, AppCtx>,
     }
     install_watcher(&window, &ctx, path.clone());
     update_window_title(&window, &path);
-    crate::recent::remember(&path);
+    if crate::recent::remember(&path) {
+        crate::menu::build(&window.app_handle());
+    }
     Ok(Some(ActiveDocument { content: data.content, mtime: data.mtime }))
 }
 
@@ -432,7 +436,9 @@ pub async fn save_file(
 
     if write_and_remember(&doc, &file_path, &content).await {
         update_window_title(&window, &file_path);
-        crate::recent::remember(&file_path);
+        if crate::recent::remember(&file_path) {
+            crate::menu::build(&window.app_handle());
+        }
         trace(|| format!("saved {} ({} bytes)", file_path.display(), content.len()));
         Ok(Some(file_path.to_string_lossy().to_string()))
     } else {
@@ -462,7 +468,9 @@ pub async fn save_file_as(
     };
     if write_and_remember(&doc, &target, &content).await {
         update_window_title(&window, &target);
-        crate::recent::remember(&target);
+        if crate::recent::remember(&target) {
+            crate::menu::build(&window.app_handle());
+        }
         Ok(Some(target.to_string_lossy().to_string()))
     } else {
         Ok(None)
