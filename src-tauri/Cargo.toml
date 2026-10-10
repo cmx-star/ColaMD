@@ -1,6 +1,6 @@
 [package]
 name = "loomark"
-version = "2.8.2"
+version = "2.8.3"
 description = "A free, elegant Markdown editor for macOS, Windows and Linux"
 authors = ["marswave.ai"]
 edition = "2021"
