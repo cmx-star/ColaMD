@@ -1,4 +1,4 @@
-import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, releaseMermaidRenderer, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, onWikiLink, setCleanExport, setDocumentFileUrl, type FormatCommandId } from './editor/editor'
+import { createEditor, focusEditor, getMarkdown, getEditorView, getEditorScroller, onEditorJumpPhase, setMarkdown, setEditorEditable, getEditorState, restoreEditorState, applyMarkdownStyle, runFormatCommand, jumpToLine, jumpToHeading, onLocalMarkdownLink, onWikiLink, setCleanExport, setDocumentPath, cancelMermaidRenders, type FormatCommandId } from './editor/editor'
 import { markdownForWord } from './editor/mermaid-export'
 import { toBase64 } from './export/base64'
 import { documentHTMLFrom } from './editor/clean-html'
@@ -41,8 +41,9 @@ const updateBannerActionEl = () => document.getElementById('update-banner-action
 
 // --- Same-directory file panel ---
 let currentFilePath: string | null = null
-// 当前文档的 file:// URL：图片的相对路径按它解析（文件里存的那串路径不动）。
-let currentFileUrl: string | null = null
+// 已经交给编辑器的图片基准路径（当前文档的绝对路径）。
+// 值没变就不再打扰装饰层；文件里存的那串相对路径始终不动。
+let appliedDocumentPath: string | null = null
 let fileManagerName: FileManagerName = 'file-manager'
 let dirty = false
 // The active document's YAML frontmatter. It is carried here instead of inside
@@ -491,7 +492,7 @@ function renderTabBar(): void {
 
 function showBlankDocument(): void {
   if (isPresenting()) stopSlideshow()
-  releaseMermaidRenderer()
+  cancelMermaidRenders()
   exitSourceMode()
   // A blank document carries no properties block from the one before it.
   activeFrontmatter = ''
@@ -566,7 +567,7 @@ async function openNewTab(): Promise<void> {
   tabs.push(tab)
   activeTabId = tab.id
   currentFilePath = null
-  applyDocumentFileUrl(null)
+  applyDocumentPath(null)
   // Tell the main process the window is now on an untitled document, otherwise
   // its notion of the active file still points at the previous tab's file.
   await window.loomark.activateFile(null)
@@ -577,21 +578,15 @@ async function openNewTab(): Promise<void> {
 }
 
 /**
- * 换文档时告诉编辑器新的图片基准 URL。
+ * 换文档时告诉编辑器新的图片基准路径（当前文档的绝对路径）。
  *
- * 文件里写的是相对路径，浏览器要的是绝对地址；解析在画图那一刻做，
+ * 文件里写的是相对路径，WebView 要的是绝对地址；解析在画图那一刻做，
  * 这样保存时写回去的还是用户原本写的那串字符。
  */
-function applyDocumentFileUrl(url: string | null): void {
-  if (url === currentFileUrl) return
-  currentFileUrl = url
-  setDocumentFileUrl(url)
-}
-
-/** 路径刚变过（另存为、自动保存落盘）时，问主进程要一次 URL。 */
-async function refreshDocumentFileUrl(): Promise<void> {
-  const url = currentFilePath ? await window.loomark.fileUrl(currentFilePath) : null
-  applyDocumentFileUrl(url)
+function applyDocumentPath(path: string | null): void {
+  if (path === appliedDocumentPath) return
+  appliedDocumentPath = path
+  setDocumentPath(path)
 }
 
 async function activateTab(id: string): Promise<void> {
@@ -609,7 +604,7 @@ async function activateTab(id: string): Promise<void> {
     // changed while this tab sat in the background. An untitled tab passes null
     // so the window stops pointing at the tab we are leaving.
     const disk = await window.loomark.activateFile(target.filePath)
-    applyDocumentFileUrl(disk?.fileUrl ?? null)
+    applyDocumentPath(target.filePath)
     // This document may have been written in a different style than the one we
     // are leaving; its content comes back with it, and the style lives in the
     // content itself, so there is nothing to restore separately.
@@ -946,7 +941,7 @@ async function runAutosave(): Promise<void> {
   // on disk since our last read or write, and ask the user instead.
   const path = await enqueueSave(() => window.loomark.saveFile(content, filePath, false, true))
   if (path && revision === documentRevision && currentFilePath === filePath) {
-    if (path !== filePath) void refreshDocumentFileUrl()
+    if (path !== filePath) applyDocumentPath(path)
     currentFilePath = path
     clearDirty()
     noteTabSaved(content)
@@ -965,7 +960,7 @@ async function saveCurrent(saveAs = false): Promise<boolean> {
     : window.loomark.saveFile(content, expectedPath ?? '', true))
   if (!path || currentFilePath !== expectedPath) return false
 
-  if (path !== expectedPath) void refreshDocumentFileUrl()
+  if (path !== expectedPath) applyDocumentPath(path)
   currentFilePath = path
   updateFileTitle()
   refreshSiblings()
@@ -1007,11 +1002,32 @@ function setToolbarTip(el: HTMLElement, label: string): void {
   if (tip) tip.textContent = label
 }
 
-function updateWordCount(content?: string): void {
-  const text = content ?? getContent()
+// 统计只在鼠标悬停那一刻可见，所以打字时不必每敲一键就把整篇扫三遍（#100）：
+// 内容变了只立一个标记，那三趟全文扫描留到指针真的移到按钮上时才做。
+let wordCountStale = false
+
+function renderWordCount(text: string): void {
   setToolbarTip(wordCountEl(), isChinese()
     ? `${countCharacters(text)} 字 · ${countTokens(text)} 词 · ${countParagraphs(text)} 段`
     : `${countCharacters(text)} chars · ${countTokens(text)} words · ${countParagraphs(text)} paragraphs`)
+}
+
+/** 立即重算并落笔。用于打开文件、切换标签页、切换语言这类一次性场合。 */
+function updateWordCount(content?: string): void {
+  wordCountStale = false
+  renderWordCount(content ?? getContent())
+}
+
+/** 文档变了（打字路径专用）：只立标记，不扫全文。 */
+function markWordCountStale(): void {
+  wordCountStale = true
+}
+
+/** 悬停时才把欠下的那次统计补上。 */
+function refreshWordCountOnHover(): void {
+  if (!wordCountStale) return
+  wordCountStale = false
+  renderWordCount(getContent())
 }
 
 // --- Reveal the current file in the OS file manager ---
@@ -1053,6 +1069,11 @@ function updateUiLanguage(): void {
   setToolbarTip(fileToggleBtnEl(), zh ? '显示 / 隐藏文件列表 (⌘\\)' : 'Show / Hide File List (⌘\\)')
   const menuBtn = document.getElementById('app-menu-btn')
   if (menuBtn) setToolbarTip(menuBtn, zh ? '菜单' : 'Menu')
+  // 这几处在 index.html 里只有中文初值，脚本不覆盖的话英文界面会漏出中文。
+  const panelTabs = document.querySelector('.file-panel-tabs')
+  if (panelTabs) panelTabs.setAttribute('aria-label', zh ? '侧栏内容' : 'Panel content')
+  const updateDismiss = document.getElementById('update-banner-dismiss')
+  if (updateDismiss) updateDismiss.setAttribute('aria-label', zh ? '关闭' : 'Dismiss')
   updateSourceToggle()
   updateWordCount()
 }
@@ -2079,9 +2100,7 @@ async function init(): Promise<void> {
   api.onFormatCommand((id) => runFormatCommand(id as FormatCommandId))
   updateUiLanguage()
 
-  await createEditor('editor', (markdown) => {
-    updateWordCount(markdown)
-  }, () => {
+  await createEditor('editor', () => markWordCountStale(), () => {
     if (!editorReady) return
     if (!applyingProgrammaticChange) setDirty()
     scheduleOutlineUpdate()
@@ -2144,12 +2163,12 @@ async function init(): Promise<void> {
   })
 
   api.onFileOpened((data) => {
-    releaseMermaidRenderer()
+    cancelMermaidRenders()
     // A document opened into a window that has none yet (a launch with a file)
     // lands in the first tab rather than creating a second one.
     ensureTab()
     currentFilePath = data.path
-    applyDocumentFileUrl(data.fileUrl ?? null)
+    applyDocumentPath(data.path)
     dirty = false
     const tab = activeTab()
     if (tab) {
@@ -2237,10 +2256,14 @@ async function init(): Promise<void> {
 
   sourceToggleBtnEl().addEventListener('click', toggleSourceMode)
   api.onToggleSourceMode(() => toggleSourceMode())
-  // Source-mode edits update the word count and mark the doc dirty in real time
+  // The count is only read while hovering the button, so it is computed then
+  // (#100): these two paths only mark it stale.
+  wordCountEl().addEventListener('mouseenter', refreshWordCountOnHover)
+  wordCountEl().addEventListener('focus', refreshWordCountOnHover)
+  // Source-mode edits mark the doc dirty and stale the count in real time
   sourceEl().addEventListener('input', () => {
     setDirty()
-    updateWordCount()
+    markWordCountStale()
     scheduleOutlineUpdate()
   })
   // The outline tracks scrolling in both modes so it doubles as a progress
@@ -2296,7 +2319,7 @@ async function init(): Promise<void> {
   api.onMenuPlaySlideshow(() => { void toggleSlideshow() })
 
   api.onNewFile(() => {
-    releaseMermaidRenderer()
+    cancelMermaidRenders()
     exitSourceMode()
     ensureTab()
     applyContent('')

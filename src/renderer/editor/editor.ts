@@ -16,9 +16,9 @@ import { footnoteDefinitions } from './footnotes'
 import { selectionHTMLFrom } from './clean-html'
 import { renderWholeDocument, restoreViewport } from '../print-layout'
 
-import { headingFlashEffect, setCleanExport as setCleanExportEffect, setDocumentFileUrlEffect, primeDocumentFileUrl } from './live-preview'
+import { headingFlashEffect, setCleanExport as setCleanExportEffect, setDocumentPathEffect, primeDocumentPath } from './live-preview'
 import { runFormatCommand as runFormat, type FormatCommandId } from './format-commands'
-import { releaseMermaidRenderer as releaseMermaidRendererBridge } from './mermaid-bridge'
+import { cancelMermaidRenders as cancelMermaidRendersBridge } from './mermaid-bridge'
 import { isChinese } from '../ui-language'
 import { headingAnchorLine } from './heading-anchor'
 
@@ -132,8 +132,9 @@ function posFromDOM(view: EditorView, element: Element): number | null {
 
 // --- mermaid ---
 
-export function releaseMermaidRenderer(): void {
-  releaseMermaidRendererBridge()
+/** 文档换了：作废还在飞的图表渲染请求（沙箱能复用就复用）。 */
+export function cancelMermaidRenders(): void {
+  cancelMermaidRendersBridge()
 }
 
 // --- 格式命令 ---
@@ -626,14 +627,14 @@ export function applyMarkdownStyle(_style: Record<string, unknown> = {}): void {
  * 光标与选区由 body 上的 `exporting` 类交给 CSS 藏起来。
  */
 /**
- * 告诉编辑器当前文档的 `file://` URL：图片的相对路径靠它解析。
+ * 告诉编辑器当前文档的绝对路径：图片的相对路径靠它解析成绝对路径。
  * 无标题文档传 null，图片就按文件里写的那样原样放着。
  */
-export function setDocumentFileUrl(url: string | null): void {
-  primeDocumentFileUrl(url)
+export function setDocumentPath(path: string | null): void {
+  primeDocumentPath(path)
   const view = handle?.getView()
   if (!view) return
-  view.dispatch({ effects: setDocumentFileUrlEffect.of(url) })
+  view.dispatch({ effects: setDocumentPathEffect.of(path) })
 }
 
 export function setCleanExport(on: boolean): void {

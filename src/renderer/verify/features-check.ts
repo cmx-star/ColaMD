@@ -244,7 +244,7 @@ export async function runFeaturesCheck(): Promise<FeaturesCheckResult> {
   const headings = m.headings as { h1: number; h2: number; raw: boolean | null }
   const inline = m.inline as { strong: number; em: number; strike: number; code: number; highlight: number; raw: boolean | null }
   const link = m.link as { anchors: number; brackets: boolean | null; url: string | null }
-  const image = m.image as { imgs: number; naturalWidth: number; raw: boolean | null }
+  const image = m.image as { imgs: number; naturalWidth: number; raw: boolean | null; failed: number }
   const list = m.list as { bullets: number; nestedClass: string | null; nested: number; tasks: number; checked: number; ordered: string | null }
   const table = m.table as { tables: number; realTables: number; cells: number; headers: number }
   const quote = m.quote as { count: number; raw: boolean }

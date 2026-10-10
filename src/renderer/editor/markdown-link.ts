@@ -14,38 +14,12 @@ export interface MarkdownLink {
   line?: number
 }
 
+// 目录名、绝对路径判定与 `.`/`..` 归一化三个工具与图片地址解析共用一份
+// （见 file-path.ts）：两边都是「相对当前文档目录解析」这一条规矩。
+import { dirnameOf, isAbsolutePath, normalize } from './file-path'
+
 /** 只认这几种扩展名：一个 `.md` 链接才值得为它开一个标签页。 */
 const MARKDOWN_EXTENSIONS = ['.md', '.markdown', '.mdown', '.mkd']
-
-/** 纯字符串的目录名（`a/b/c.md` → `a/b`），不引 node 的 path 模块。 */
-function dirnameOf(path: string): string {
-  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
-  return cut < 0 ? '' : path.slice(0, cut)
-}
-
-function isAbsolutePath(path: string): boolean {
-  return path.startsWith('/') || /^[a-z]:[\\/]/i.test(path)
-}
-
-/** 解析 `.` 与 `..`，保留前导斜杠（或 Windows 盘符）。 */
-function normalize(path: string): string {
-  const drive = /^([a-z]:)[\\/]/i.exec(path)
-  const rest = drive ? path.slice(drive[1].length) : path
-  const absolute = rest.startsWith('/') || rest.startsWith('\\')
-  const out: string[] = []
-  for (const part of rest.split(/[\\/]/)) {
-    if (!part || part === '.') continue
-    if (part === '..') {
-      if (out.length && out[out.length - 1] !== '..') out.pop()
-      else if (!absolute) out.push('..')
-      continue
-    }
-    out.push(part)
-  }
-  const joined = out.join('/')
-  const prefix = drive ? `${drive[1]}/` : absolute ? '/' : ''
-  return prefix + joined
-}
 
 function extensionOf(path: string): string {
   const name = path.slice(path.lastIndexOf('/') + 1)

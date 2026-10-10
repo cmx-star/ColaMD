@@ -93,12 +93,6 @@ function detectFileManager(): FileManagerName {
   return isWindows() ? 'explorer' : 'file-manager'
 }
 
-/** Local files reach the webview through Tauri's asset protocol, which is what
- *  `file://` did in the Electron build (relative images in a document). */
-function documentUrl(path: string | null): string | null {
-  return path ? convertFileSrc(path) : null
-}
-
 export function createTauriApi(): LoomarkApi {
   const api: LoomarkApi = {
     // --- Opening and reading documents ------------------------------------
@@ -114,11 +108,13 @@ export function createTauriApi(): LoomarkApi {
     activateFile: async (path: string | null) => {
       const active = await invoke<{ content: string; mtime: number } | null>('activate_file', { filePath: path })
       if (!active) return null
-      return { content: active.content, fileUrl: documentUrl(path) ?? '', mtime: active.mtime }
+      return { content: active.content, mtime: active.mtime }
     },
     listSiblings: async () => invoke<SiblingFile[] | null>('list_siblings'),
     listDirectory: async (path: string) => invoke<SiblingFile[] | null>('list_directory', { dirPath: path }),
-    fileUrl: async (path: string) => documentUrl(path),
+    // 图片的相对路径先由渲染层拼成绝对路径（editor/image-path.ts），再到这里换成
+    // asset 协议地址：本地文件仍然走 Tauri 的 asset 协议，和 Electron 版的 `file://` 同位。
+    assetUrl: (path: string) => convertFileSrc(path),
     setTabFiles: (paths: string[]) => {
       void invoke('set_tab_files', { paths }).catch(() => undefined)
     },
@@ -244,7 +240,7 @@ export function createTauriApi(): LoomarkApi {
     // --- Events from the shell ---------------------------------------------
     onFileOpened: (callback: (data: FileOpenedData) => void) => {
       on<{ path: string | null; content: string }>('file-opened', (payload) => {
-        callback({ path: payload.path, content: payload.content, fileUrl: documentUrl(payload.path) })
+        callback({ path: payload.path, content: payload.content })
       })
     },
     onFileChanged: (callback: (content: string) => void) => on<string>('file-changed', callback),

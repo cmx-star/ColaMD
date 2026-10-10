@@ -3,12 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https: http: file:;">
+  <!-- img-src 放行 `asset:`：本地图片由 Tauri 的 asset 协议送达（Windows 上是
+       `http://asset.localhost/...`，已含在 http: 里）。`file:` 是 Electron 时代的
+       老路，留着重开那条路不会更松。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' asset: data: blob: https: http: file:;">
   <title>loomark</title>
   <!-- Keep the titlebar stable before the renderer CSS bundle loads. -->
   <style>
     /* Keep the titlebar stable before the renderer CSS bundle loads. Must match
-       --chrome-row-height (base.css) and TITLEBAR_HEIGHT (src/main/index.ts). */
+       --chrome-row-height (themes/base.css) and the window height the Rust shell
+       creates (src-tauri/src/windows.rs, "one row of our own" = 36pt). */
     #titlebar { height: 36px; display: flex; align-items: center; padding: 0 6px 0 96px; position: relative; z-index: 30; -webkit-app-region: drag; }
     /* macOS hides the traffic lights in full screen, and Windows and Linux never
        had any: the 96px clearance goes with them. */

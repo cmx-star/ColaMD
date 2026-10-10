@@ -125,7 +125,15 @@ window.addEventListener('message', (event) => {
   }
 })
 
-export function releaseMermaidRenderer(): void {
+/**
+ * 文档换了：把还在飞的渲染请求作废，免得它们的结果落到新文档上。
+ *
+ * 没有请求在飞就什么都不做，**保留沙箱**：重建它要重新加载整块 Mermaid 并重新
+ * initialize，而切文档本身并不需要。只有在真有渲染卡在沙箱里时才连沙箱一起销毁，
+ * 否则一个卡住的渲染（比如已知的 gantt OOM 用例）会一直占着它，拖累后面每一张图。
+ */
+export function cancelMermaidRenders(): void {
+  if (pending.size === 0 && waitingForReady.length === 0) return
   rejectAllPending(new Error('文档已切换'))
   destroyIframe()
 }

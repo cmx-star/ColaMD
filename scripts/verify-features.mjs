@@ -19,15 +19,13 @@
 // 用法: npm run verify:features（先 npm run build && npx tauri build --no-bundle）
 // 窗口放在屏幕外，不占用屏幕。
 //
-// 已知缺口（2026-10-10 迁移时实测）：两条「本地图片」断言在 Tauri 版是红的——
-//   · 本地图片渲染：`![本地图片](pixel.png)` 的相对路径在 asset 协议下加载失败
-//     （ImageWidget 触发 error，回退成源码，`cm-md-image-failed`）。
-//   · 导出的 HTML 带图片：同一根因，图片没进 DOM，导出 HTML 里自然没有 `<img>`。
-// 根因在 `src/renderer/editor/live-preview.ts` 的 `resolveImageSrc`：它拿
-// `convertFileSrc(文档路径)` 当 base 去 `new URL(相对路径, base)`，而 Tauri v2 的 asset
-// 协议不是这样解析兄弟文件的。修它属于产品行为变更（要么先把相对路径在文件系统里拼成
-// 绝对路径再 convertFileSrc，要么另走一条读文件的桥），不在本次「脚本从 Electron 迁到
-// COLAMD_VERIFY 通道」的范围内，单独起活。这两条断言保留，红着即是在提醒这个缺口还在。
+// 曾经红着的两条断言（2026-10-10 迁移时实测，当天修好）：「本地图片渲染」与
+// 「导出的 HTML 带图片」。根因是 `resolveImageSrc` 拿 `convertFileSrc(文档路径)` 当 base
+// 去 `new URL(相对路径, base)`——asset 协议把整条路径编码成一个路径段，兄弟文件解析不出来，
+// 图片触发 error 回退成源码，导出 HTML 里自然也没有 `<img>`。
+// 修法：相对路径先在 `src/renderer/editor/image-path.ts` 里按「当前文档所在目录」拼成
+// 绝对路径，再交给外壳的 `assetUrl`（platform-api）换成 asset 地址；CSP 的 `img-src`
+// 同时补上 `asset:`。路径拼接那条有纯 Node 的 `npm run verify:links` 守着。
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'

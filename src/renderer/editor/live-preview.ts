@@ -30,6 +30,7 @@ import { scanMath, excludedRanges, frontmatterRange, type Excluded } from './mat
 import { renderMermaid } from './mermaid-bridge'
 import { sanitizeHTML } from './html-sanitize'
 import { footnoteDefinitions, footnoteNumbers, FOOTNOTE_REF_RE } from './footnotes'
+import { resolveImagePath } from './image-path'
 import { isChinese } from '../ui-language'
 
 /** 给区间加样式类，不隐藏任何字符。 */
@@ -184,30 +185,31 @@ function editorFocused(state: EditorState): boolean {
  * 光标、选区都不该跟着进 PDF。导出前把它打开，导出后关掉。
  */
 /**
- * 文档自己的 `file://` URL。
+ * 当前文档的**绝对路径**（还没存盘的未命名文档是 null）。
  *
  * 文件里写的是 `![](img/a.png)` 这样的**相对**路径——那是用户文件里真实存在的一串字，
- * 不许改（改了就等于保存时动用户的文件）。但浏览器要的是一个能加载的绝对地址，
- * 所以解析放在画图这一刻做，用文档自己的 URL 当基准。
+ * 不许改（改了就等于保存时动用户的文件）。但 WebView 要的是一个能加载的绝对地址，
+ * 所以解析放在画图这一刻做：先按这个路径拼出绝对路径（image-path.ts），再交给外壳
+ * 换成 asset 协议地址。为什么不能拿文档的 `asset://` 地址当基准，见 image-path.ts。
  *
  * 值同时留在模块变量里：换文件会重建整个 EditorState，field 会被 create 重置，
  * 只有模块变量能跨过去。
  */
-let documentFileUrl: string | null = null
+let documentPath: string | null = null
 
 /** 编辑器还没建起来时也要能先记下基准，否则第一张图会按空基准解析。 */
-export function primeDocumentFileUrl(url: string | null): void {
-  documentFileUrl = url
+export function primeDocumentPath(path: string | null): void {
+  documentPath = path
 }
 
-export const setDocumentFileUrlEffect = StateEffect.define<string | null>()
+export const setDocumentPathEffect = StateEffect.define<string | null>()
 
-export const documentFileUrlField = StateField.define<string | null>({
-  create: () => documentFileUrl,
+export const documentPathField = StateField.define<string | null>({
+  create: () => documentPath,
   update(value, tr) {
     for (const effect of tr.effects) {
-      if (effect.is(setDocumentFileUrlEffect)) {
-        documentFileUrl = effect.value
+      if (effect.is(setDocumentPathEffect)) {
+        documentPath = effect.value
         return effect.value
       }
     }
@@ -215,16 +217,17 @@ export const documentFileUrlField = StateField.define<string | null>({
   },
 })
 
-/** 把文件里的图片地址解析成浏览器能加载的地址。 */
-function resolveImageSrc(raw: string, base: string | null): string {
+/**
+ * 把文件里的图片地址解析成 WebView 能加载的地址。
+ *
+ * 解析不出绝对路径的（远程地址、`data:`、还没存盘的未命名文档）就按文件里写的那串
+ * 原样交出去：宁可让它加载失败、退回源码，也不改用户文件里的字。
+ */
+function resolveImageSrc(raw: string, docPath: string | null): string {
   const value = raw.trim().replace(/^<|>$/g, '')
-  if (/^(?:https?:|file:|data:|blob:)/i.test(value)) return value
-  if (!base) return value
-  try {
-    return new URL(value.replaceAll('\\', '/'), base).href
-  } catch {
-    return value
-  }
+  const path = resolveImagePath(value, docPath)
+  if (!path) return value
+  return window.loomark?.assetUrl?.(path) ?? value
 }
 
 /** `![alt](src)` / `![alt](<src> "title")`。解析不了就返回 null，退回源码。 */
@@ -734,7 +737,7 @@ function collectTables(state: EditorState, ranges: DecorationRange[], front: Ran
         deco: Decoration.replace({
           widget: new TableWidget(
             state.doc.sliceString(node.from, node.to),
-            state.field(documentFileUrlField, false) ?? documentFileUrl,
+            state.field(documentPathField, false) ?? documentPath,
             node.from,
             node.to
           )
@@ -951,7 +954,7 @@ function codeInsideFence(state: EditorState, node: SyntaxNodeRef): string {
 // ─── 图片 ────────────────────────────────────────────────────────────────────
 
 function collectImages(state: EditorState, ranges: DecorationRange[], front: Range | null): void {
-  const base = state.field(documentFileUrlField, false) ?? documentFileUrl
+  const base = state.field(documentPathField, false) ?? documentPath
   iterateContent(state, front, (node) => {
     if (node.name !== 'Image') return
     // 光标在图片这一行就退回源码：改路径就是改文字
@@ -1217,7 +1220,7 @@ export const livePreviewField = StateField.define<DecorationSet>({
     if (flash) currentFlash = flashValue
     const parsed = tr.effects.some((effect) => effect.is(decorationsRefreshEffect))
     // 文档换了个文件，图片的相对路径要按新的基准重新解析
-    const rebased = tr.effects.some((effect) => effect.is(setDocumentFileUrlEffect))
+    const rebased = tr.effects.some((effect) => effect.is(setDocumentPathEffect))
     // 焦点变化与导出开关都要重算：前者决定「正在编辑」那一行的源码显不显形，
     // 后者在导出时把这一层整个关掉。
     const focused = tr.state.field(editorFocusField, false) ?? false
@@ -1287,7 +1290,7 @@ const parseRefresh = ViewPlugin.fromClass(class {
 export const livePreview: Extension = [
   editorFocusField,
   cleanExportField,
-  documentFileUrlField,
+  documentPathField,
   livePreviewField,
   parseRefresh,
 ]

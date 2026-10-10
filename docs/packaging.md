@@ -1,5 +1,22 @@
 # Packaging Notes
 
+> **本文记录的是 Electron 时代（2026-09-12 的一次验证打包）。** 外壳在 2026-09-30
+> 迁到 Tauri 之后，下面所有 `electron-builder` / `electron-vite` / `npx electron .`
+> 的写法和配置文件名都已失效，保留下来只为「为什么当年这么定」那段推理与实测数字。
+>
+> Tauri 下对应的做法（2026-10-10 实测，macOS arm64、Rust 增量）：
+>
+> - 本地验证功能**不必打包**：`npm run build && npx tauri build --no-bundle` 就得到
+>   可运行的 `src-tauri/target/release/loomark`，验收脚本用的就是它
+> - 要看打包后的应用：`npm run build && ./node_modules/.bin/tauri build --bundles app`
+>   （`--dir` 是 electron-builder 的参数，Tauri 认的是 `--bundles app`）。产物
+>   `src-tauri/target/release/bundle/macos/loomark.app`，实测 8.59 MiB、约 50 秒
+> - 只打本机架构：Tauri 默认就是本机架构，`universal` 要显式 `--target universal-apple-darwin`
+> - 本地包不签名（不设 `APPLE_*` / `APPLE_SIGNING_IDENTITY` 即自动跳过），不要发给用户
+> - `cargo` 不在 PATH 上，打包前 `export PATH="$HOME/.cargo/bin:$PATH"`
+>
+> 下面「时间花在哪里」一节里的耗时是 Electron 的数字，Tauri 下没有重新测量。
+
 本地打包的实测记录与规矩。结论来自 2026-09-12 的一次本地验证打包（macOS 26.6、arm64、electron-builder 26.16.1）。
 
 ## 包体积

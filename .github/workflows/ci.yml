@@ -1,0 +1,45 @@
+name: CI
+
+# PR 级检查：只跑**不需要构建**的那几条验收。
+#
+# 为什么值得有这一条：渲染层的类型检查一度是红的（features-check.ts 里一个字段没写进
+# 类型断言），而仓库里只有 release.yml、它只在打 tag 时触发，所以没人发现。改命令行
+# 参数比改行为更难出错，这几条跑在 PR 上就不会再漏。
+#
+# 刻意不做的事：verify:scroll-render / verify:themes / verify:features / verify:export-*
+# 都要先编出 Tauri 二进制、还要开一个真窗口（离屏），Linux runner 上没有；外壳的
+# `cargo check` 要装 WebKitGTK 与构建依赖，成本高得多。这些留给 release.yml 与本地。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  renderer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # 渲染层类型检查（AGENT.md 里那条 `tsc --noEmit -p tsconfig.renderer.json`）
+      - name: 类型检查
+        run: npx tsc --noEmit -p tsconfig.renderer.json
+
+      # 用户没改过的字节，保存时必须不变。纯 Node，直接消费 TS 源码
+      - name: 打开再保存，字节不许变
+        run: npm run verify:markdown
+
+      # 本地链接与图片地址的解析（中文与编码文件名、行号后缀、标题锚点、相对路径拼接）
+      - name: 链接与图片路径解析
+        run: npm run verify:links
+
+      # 内置主题与独立主题文件的变量契约
+      - name: 主题变量契约
+        run: npm run check:theme-colors

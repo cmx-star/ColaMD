@@ -13,7 +13,7 @@ export interface SiblingFile {
 
 // These shape the payloads on the shell API, so they belong to the contract rather
 // than to the adapter that happens to implement it.
-export type FileOpenedData = { path: string | null; content: string; fileUrl: string | null }
+export type FileOpenedData = { path: string | null; content: string }
 export type ImageExportPreset = 'desktop' | 'mobile'
 export type FileManagerName = 'finder' | 'explorer' | 'file-manager'
 
@@ -50,9 +50,15 @@ export interface LoomarkApi {
   listSiblings: () => Promise<SiblingFile[] | null>
   listDirectory: (path: string) => Promise<SiblingFile[] | null>
   openSibling: (path: string) => Promise<boolean>
-  activateFile: (path: string | null) => Promise<{ content: string; fileUrl: string; mtime: number } | null>
+  activateFile: (path: string | null) => Promise<{ content: string; mtime: number } | null>
   setTabFiles: (paths: string[]) => void
-  fileUrl: (path: string) => Promise<string | null>
+  /**
+   * 绝对路径 → WebView 能加载的地址（Tauri 的 asset 协议）。
+   *
+   * 同步的：图片装饰在画的那一刻就要拿到地址。网页版不碰本地文件，没有这个能力，
+   * 所以是可选的——拿不到时图片按文件里写的那串字符原样渲染。
+   */
+  assetUrl?: (path: string) => string
   onFocusFile: (callback: (path: string) => void) => void
   onOpenInNewTab: (callback: (path: string) => void) => void
   /** A local Markdown link: open it in a tab and land on the fragment or line. */

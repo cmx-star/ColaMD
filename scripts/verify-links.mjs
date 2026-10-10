@@ -41,6 +41,7 @@ async function load() {
   mkdirSync(join(WORK, 'notes'), { recursive: true })
   for (const [name, entry] of [
     ['paths', 'src/renderer/editor/markdown-link.ts'],
+    ['images', 'src/renderer/editor/image-path.ts'],
     ['headings', 'src/renderer/editor/heading-anchor.ts'],
     ['wiki', 'src/renderer/editor/wiki-link.ts'],
   ]) {
@@ -48,6 +49,7 @@ async function load() {
   }
   return {
     resolveMarkdownLink: require(join(WORK, 'paths.cjs')).resolveMarkdownLink,
+    resolveImagePath: require(join(WORK, 'images.cjs')).resolveImagePath,
     headingAnchorLine: require(join(WORK, 'headings.cjs')).headingAnchorLine,
     parseWikiLink: require(join(WORK, 'wiki.cjs')).parseWikiLink,
     hasMarkdownExtension: require(join(WORK, 'wiki.cjs')).hasMarkdownExtension,
@@ -55,7 +57,7 @@ async function load() {
 }
 
 async function main() {
-  const { resolveMarkdownLink, headingAnchorLine, parseWikiLink, hasMarkdownExtension } = await load()
+  const { resolveMarkdownLink, resolveImagePath, headingAnchorLine, parseWikiLink, hasMarkdownExtension } = await load()
   const source = join(WORK, 'notes', 'source.md')
 
   // --- 相对路径按「当前文档所在目录」解析，不是按 cwd ---
@@ -137,6 +139,32 @@ async function main() {
   check('双链拒绝单中括号 [链接]', () => {
     assert.equal(parseWikiLink('[链接]'), null)
   })
+
+  // --- 图片地址：拼成文件系统里的绝对路径，非本地文件一律不碰 ---
+  //
+  // 判的是这条根因：Tauri 的 asset 协议下，`convertFileSrc(文档路径)` 把整条路径
+  // 编码成一个路径段，拿它当 URL 基准去解析兄弟文件只会得到进程工作目录下的一个
+  // 不存在的路径，图片必然加载失败。所以相对路径得先在这里拼成绝对路径。
+  for (const [src, expected] of [
+    ['pixel.png', join(WORK, 'notes', 'pixel.png')],
+    ['./img/a.png', join(WORK, 'notes', 'img', 'a.png')],
+    ['../up.png', join(WORK, 'up.png')],
+    ['../../way/up.png', join(dirname(WORK), 'way', 'up.png')],
+    ['sub/中文 图.png', join(WORK, 'notes', 'sub', '中文 图.png')],
+    ['my%20pic.png', join(WORK, 'notes', 'my pic.png')],
+    ['back\\slash.png', join(WORK, 'notes', 'back', 'slash.png')],
+    [join(WORK, 'absolute.png'), join(WORK, 'absolute.png')],
+    ['C:\\pics\\a.png', 'C:/pics/a.png'],
+  ]) {
+    check(`图片 ${src}`, () => assert.equal(resolveImagePath(src, source), expected))
+  }
+
+  // 这些地址本身就够用，不许被拼成文件路径（改了就等于动用户文件里的字）。
+  for (const src of ['https://e.com/a.png', 'http://e.com/a.png', 'data:image/png;base64,AAA', 'blob:abc', 'file:///tmp/a.png', 'mailto:x@y.z']) {
+    check(`图片原样保留 ${src}`, () => assert.equal(resolveImagePath(src, source), null))
+  }
+  check('未命名文档里的相对图片不解析', () => assert.equal(resolveImagePath('pixel.png', null), null))
+  check('空地址不解析', () => assert.equal(resolveImagePath('', source), null))
 
   console.log(failures ? `\n✗ ${failures} 条不通过（${passed} 条通过）` : `\n✓ ${passed} 条全部通过`)
   if (failures) process.exitCode = 1

@@ -114,7 +114,7 @@ src/renderer/       # 渲染层，原样平移自 Electron 版
 - 每个新功能先问：这是必要的吗？
 - UI、图标、间距和交互规范详见 [design.md](design.md)，所有参与者提交界面改动前都应检查贡献清单。
 - 产品与工程的判断标准汇总在 [PRINCIPLES.md](PRINCIPLES.md)：稳定性优先、用户数据不可丢、先测量再优化、决策留痕等。
-- 本地打包验证的实测数据与规矩见 [docs/packaging.md](docs/packaging.md)：本地只打单架构 `--dir`，不在软链 `node_modules` 的 worktree 里打包。
+- 本地打包验证见 [docs/packaging.md](docs/packaging.md)：本地只打本机单架构并跳过签名（Tauri 下是 `--bundles app`，`--dir` 是 Electron 时代的参数），本地包不要发给用户。
 - 验收窗口一律**移到屏幕外，不要隐藏**（`COLAMD_VERIFY` 时由外壳摆放）。隐藏的窗口永远等不到一次 paint，截图类的检查会挂到超时且不报错（上游 `1e9b481` 踩过）。`--window-position` 那种做法不要再用：它对 Electron 不生效，实测被忽略。
 - 跑需要二进制的验收脚本前先 `npm run build && npx tauri build --no-bundle`。忘了构建会拿旧产物去验，红的是假的；`scripts/build-freshness.mjs` 的 `assertBuildFresh()` 会拦住这种情况（它同时判渲染层产物和二进制两样）。
 - 验收脚本（改动碰到哪儿就跑哪条，拿不准就都跑）：
@@ -125,4 +125,4 @@ src/renderer/       # 渲染层，原样平移自 Electron 版
   - `npm run check:theme-colors`：12 套内置主题与独立主题文件的变量契约
   - 类型检查：`npx tsc --noEmit -p tsconfig.renderer.json`，外壳是 `~/.cargo/bin/cargo check`（`cargo` 不在 PATH 上）
 - 验收脚本的工作目录与进程回收统一走 `scripts/verify-workdir.mjs`：每个脚本一个固定目录、开跑前后各清一次，进程按标记 `pkill` 而不是按 pid —— 脚本自己被强杀时 `finally` 根本不会跑到，进程就留在机器上了。标记之间不能互为前缀（`pkill -f` 是子串匹配）。
-- **已知缺口**：`verify:export-pdf`、`verify:features`、`verify:image-export` 三个脚本仍在 spawn 已被删除的 Electron（全仓已无 Electron 依赖），目前跑不起来，待迁移到 `COLAMD_VERIFY` 通道。
+- 三条需要真机的验收（`verify:features`、`verify:export-pdf`、`verify:export-image`）都已经走 `COLAMD_VERIFY` 通道（2026-10-10 完成，全仓已无 Electron 依赖），跑之前要先 `npm run build && npx tauri build --no-bundle`，否则 `scripts/build-freshness.mjs` 会拦下。
