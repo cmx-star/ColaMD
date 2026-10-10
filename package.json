@@ -7,10 +7,10 @@
     "email": "hello@marswave.ai"
   },
   "license": "MIT",
-  "homepage": "https://github.com/marswaveai/colamd",
+  "homepage": "https://loomark.starcmx.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/marswaveai/colamd.git"
+    "url": "https://github.com/cmx-star/ColaMD.git"
   },
   "scripts": {
     "app:build": "tauri build",

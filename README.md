@@ -2,7 +2,7 @@
 
 > A free, elegant Markdown editor anyone can pick up. No toolbars, no clutter, and the file on disk is always what you see.
 
-**Language / 语言: [English](README.md) · [中文](README_CN.md)** · [Website](https://colamd.com/)
+**Language / 语言: [English](README.md) · [中文](README_CN.md)** · [Website](https://loomark.starcmx.com/)
 
 loomark is an open-source, free, elegant Markdown editor for writing, notes, and documentation. It is built for people who just want to write: no toolbars, no status bar, nothing to configure: just your text and a file list, with a tab strip only when you open a second document.
 
@@ -11,7 +11,7 @@ It offers true WYSIWYG editing, 4 built-in themes with custom-theme import, rich
 Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or another editor), loomark shows the new content right away. No reopening, no manual refresh.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/release/cmx-star/ColaMD.svg)](https://github.com/cmx-star/ColaMD/releases)
+[![GitHub release](https://img.shields.io/github/release/marswaveai/loomark.svg)](https://github.com/marswaveai/loomark/releases)
 
 [Download](#download) | [Features](#features)
 
@@ -65,7 +65,7 @@ loomark does not ask you to change your habits. It works well alongside Obsidian
 
 ## Download
 
-> Check [Releases](https://github.com/cmx-star/ColaMD/releases) for the latest builds.
+> Check [Releases](https://github.com/marswaveai/loomark/releases) for the latest builds.
 
 | Platform | Format |
 |----------|--------|
@@ -75,46 +75,7 @@ loomark does not ask you to change your habits. It works well alongside Obsidian
 
 ## Roadmap
 
-loomark will keep growing as a focused, free Markdown editor:
-
-- v1.1: Live file reload, file associations, drag & drop, themes
-- v1.2: New icon
-- v1.3: Agent activity indicator, Cmd+click links, rich text copy, smart line breaks, PDF export, theme persistence
-- v1.6: Robust live sync: atomic-save (rename) detection, watcher self-recovery, spellcheck off
-- v1.6.1: Editable task lists (click / ⌘+Enter), ==highlight== syntax, Markdown cheatsheet
-- v1.6.2: Temporarily remove HTML export
-- v1.7: Same-directory file list: switch files in place, live updates when agents create/remove files; search (⌘F) + LaTeX (⌘⇧E) from community PR #14
-- v1.7.1: Task checkbox click fix, centered SVG checkmark, titlebar file-panel toggle button
-- v1.7.2: Playable demo page: Help → 新功能演示 (⌘⇧D), a real directory showcasing each release's features
-- v1.7.3: Demo page becomes a cumulative changelog: resources/demo/changelog.md records every release and opens straight into it
-- v1.7.4: Community-feedback release: file panel improvements, source mode, HTML export, Windows image paths, and a VS Code integration MVP
-- v1.8.0: Portable image paths for Markdown and HTML images, plus editing fixes from community feedback
-- v1.8.1: Refined first-launch experience and macOS icon; removed Mermaid rendering so code blocks remain native and editable
-- v1.9.0: Word export, desktop and mobile reading-page image export, a document outline, themed PDF pages, and leaner startup loading
-- v2.0.0: 1000-star release: Mermaid diagrams return with luminance-aware colors, recent files & session restore, editor font settings, heading anchors, multiple windows, and a save status hint
-- v2.0.1: Universal macOS build for Apple silicon and Intel Macs, plus custom-theme restoration, Mermaid render recovery, and Windows updater fixes
-- v2.0.2: Resizable file panel (180–420px, remembered) and an outline progress view that highlights the current heading and flashes the landing point after a jump
-- v2.8.0: The app is renamed loomark, after loom and mark: the documents are the threads, the editor weaves them. Name, menus, window titles, bundle name and icon all change, and the settings folder moves from `~/.colamd` to `~/.loomark` (the two do not share state, so preferences start from their defaults again). The file list gives folders and Markdown files colour icons from Material Icon Theme
-- v2.8.1: Export hardened: PDF page breaks avoid tables, formulas, diagrams and images; long documents render page-by-page instead of failing on the canvas limit; and an export progress indicator appears for slow exports
-- v2.7.0: The editor core is rewritten around a single rule: the editor holds the file's bytes, and rendering is a layer drawn on top of them. Characters you never touched can no longer change on save (table delimiter rows and `*`, `$`, `_` used to come back rewritten), long documents export whole instead of one screenful, and images, links, footnotes, inline HTML, Mermaid diagrams, code highlighting, copy buttons and list continuation are all back on the new core
-- v2.6.0: Mermaid diagrams are drawn into exported Word documents (rendered light, because Word is a white page), the reading column has three widths in View → Text Width (640 / 780 / 1080, honoured by source mode and by the HTML and PDF exports), unsaved work is copied to `~/.loomark/recovered` before it is discarded, and the tab close button answers a 24×24 target while staying 16×16 on screen
-- v2.5.0: The document becomes a slideshow (View → Play Slideshow, ⌘⇧P): one `---` per page, full screen, starting at your caret, with the theme's typography, tables, formulas and diagrams on every slide. The same deck exports as a 16:9 PDF. Empty lines you type are written as blank lines instead of `<br />` tags, and a mixed `---`/`***` document keeps the rule marker it mostly uses
-- v2.4.4: YAML frontmatter survives a save byte for byte (opening a note and saving it used to rewrite the block into invalid YAML and overwrite the file), CRLF files stay CRLF, wide tables stop losing their last column in PDF exports, the find panel clears the window controls in the top row, a document opened from outside the app lands in the window you are looking at, and the file list can sit on either side from the View menu
-- v2.4.3: The Windows window buttons finally follow the theme. The colour handed to the system was a CSS Color 4 value it cannot parse, so the whole update was rejected and the buttons kept the colours from window creation (a light strip over a black row)
-- v2.4.2: Windows refinements to the one row: the system's window buttons are drawn in the row icons' grey instead of the document's ink, and the menu button moves to the row's left end with even spacing on both sides
-- v2.4.1: Full screen stops reserving room for traffic lights that are not there; Windows gets a shell of one row instead of three stacked bars, with the menu as the row's fourth icon; the shell's focus ring follows the theme instead of the system accent; the Window menu speaks the interface language; and a new tab is ready to type in
-- v2.4.0: The top row rebuilt. The left belongs to the document and the right is one column, with the file panel docked under the three controls that open it. Tabs fill the row as full-height columns and never collapse below twice the row height; every seam in the shell is one opaque hairline; the new-tab button keeps its place when the row fills up; and the panel shortcut is now `⌘\`
-- v2.3.0: Folders expand in place in the file list, one root and downward, so nested documents are one click away. Plus a round of shell tightening: the tab strip starts on the panel's edge line, resizing the panel lights up the divider itself, long names in the list appear as a hover label instead of scrolling past the icon, and the title-bar controls express state through weight instead of boxes
-- v2.2.0: One top row: the tab strip is always there and a single document is a tab too. Opened files land as tabs instead of new windows, the window remembers its size and zoom, PDF export gets page margins painted with the theme, plus a Format submenu, footnote hover previews, and colours that follow the theme everywhere
-- v2.1.2: A quieter tab strip: the first tab sits flush with the window edge, and the theme colour line on the active tab is gone. The editor is a canvas, the shell stays out of the way
-- v2.1.1: Tabs get their plus back, at the end of the tab strip; a right-click menu on tabs (close, close others, close to the right, copy path, reveal); and a quieter hover hint that waits a second and shows only the shortcut
-- v2.1.0: Tabs: keep several documents open in one window, each with its own content, undo history, unsaved state and scroll position. Open one with ⌘T, from the File menu, or with ⌘-click in the file list; with a single document the tab strip does not appear at all
-- v2.0.7: Per-architecture macOS downloads (216 MB down to about 82 MB), a Windows zip build that runs without installing, a context menu in the file panel, and a document title that stays centred
-- v2.0.6: Titlebar fixes: reveal-in-file-manager works again, tooltips paint above the document instead of showing through, and the top-right controls align with the top edge
-- v2.0.5: The reveal-in-file-manager button is now reachable, hovering the document title brings it out
-- v2.0.4: PDF export no longer captures app overlays, undo can no longer cross documents, rich-text copy no longer adds blank lines in chat apps, source mode no longer overflows with the file panel open, a reveal-in-file-manager action next to the document title, and the heuristic agent activity dot removed
-- v2.0.3: Find & replace, UI language switch, large-document source-mode fallback, update download progress with retry, and differential (blockmap) updates
-- Future: More themes, editor integrations, and smoother Markdown workflows
+loomark will keep growing as a focused, free Markdown editor. A full history of every release, in both languages, lives in [`resources/demo/changelog.md`](resources/demo/changelog.md), which the app also opens after an update. See the [Releases](https://github.com/marswaveai/loomark/releases) page for the latest builds.
 
 ## License
 
@@ -123,4 +84,4 @@ loomark will keep growing as a focused, free Markdown editor:
 
 ---
 
-loomark is built by [Cola.app](https://cola.app) and maintained by [orange2ai](https://github.com/orange2ai). Issues, ideas and pull requests are welcome.
+loomark is built by [Cola.app](https://cola.app) and maintained by [orange2ai](https://github.com/orange2ai). This fork is developed by [cmx-star](https://github.com/cmx-star). Issues, ideas and pull requests are welcome.

@@ -1,5 +1,7 @@
 # 导出 PDF 与图片的方案
 
+> 状态：已落地（v2.8.1 起）。方案 A（系统打印对话框）与方案 B（SVG→canvas）均已实装，代码在 `src/renderer/export/`，验收脚本 `npm run verify:export-pdf` / `verify:export-image`。本文保留「已核实的事实」与「探针踩的坑」作为维护参考，Context 与三方案对比已失去时效。
+
 ## Context
 
 Electron 版的 PDF 走 `webContents.printToPDF`，图片走隐藏窗口 `capturePage`。搬到 Tauri 后这两条路都没了，[tauri-migration-plan.md](tauri-migration-plan.md) 的 R1 记的是「PDF 降级为打印对话框」，R3 记的是「图片没有 `capturePage` 等价能力，要写三平台原生截图桥」。

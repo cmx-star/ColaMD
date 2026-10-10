@@ -222,15 +222,15 @@ Re-opened as a candidate on 2026-09-11 instead of staying declined, then designe
 
 ## Security Maintenance
 
-### Upgrade Electron and transitive security dependencies
+### Upgrade runtime and transitive security dependencies
 
 **Source:** `npm audit` (2026-08-28)
 
-**Need:** Upgrade the Electron runtime and its transitive dependencies to versions that address the currently reported security advisories, without weakening the app's document and renderer security model.
+**Need:** Keep the runtime and its transitive dependencies on versions that address the currently reported security advisories, without weakening the app's document and renderer security model.
 
-**Scope:** Evaluate the required Electron major-version upgrade, then verify macOS code signing and notarization, Windows and Linux builds, auto-update manifests, Mermaid rendering, file opening, IPC boundaries, and unsaved-document protection on every supported platform.
+**Scope:** Evaluate required dependency upgrades, then verify macOS code signing and notarization, Windows and Linux builds, auto-update manifests, Mermaid rendering, file opening, IPC boundaries, and unsaved-document protection on every supported platform.
 
-**Status:** Planned. Do not mix this with issue #55, whose reported PostCSS version is outdated and is not present in the current dependency tree.
+**Status:** Superseded. The original 2026-08-28 item asked to upgrade Electron; the app has since migrated to Tauri 2 (see [tauri-migration-plan.md](tauri-migration-plan.md)), so Electron is gone and `npm audit` runs against the Tauri-era tree. Do not mix this with issue #55, whose reported PostCSS version is outdated and is not present in the current dependency tree.
 
 ## Website feature cards (positioning)
 

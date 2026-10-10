@@ -1,8 +1,8 @@
-# ColaMD Themes
+# loomark Themes
 
-ColaMD ships with 12 built-in themes. Every theme below is available as a standalone `.css` file — download it and place it in `~/.colamd/themes/`, or use **Theme > Import Theme** in ColaMD to import directly.
+loomark ships 4 built-in themes in the menu (Light, Sepia, Solarized Dark, Nord), and this folder carries more styles you can import as custom themes. Every theme below is available as a standalone `.css` file: download it and place it in `~/.loomark/themes/`, or use **Theme > Import Theme** in loomark to import directly.
 
-See the [theme swatches](https://raw.githubusercontent.com/marswaveai/ColaMD/main/docs/images/theme-swatches.svg) for a visual preview.
+See the [theme swatches](https://raw.githubusercontent.com/marswaveai/loomark/main/docs/images/theme-swatches.svg) for a visual preview.
 
 ## Light Themes
 
@@ -28,7 +28,7 @@ See the [theme swatches](https://raw.githubusercontent.com/marswaveai/ColaMD/mai
 
 ## Creating Your Own Theme
 
-ColaMD custom themes are plain CSS files. Start from [template.css](template.css): it is a working theme with every variable and a few selectors commented, and the same check that guards the built-in themes runs over it, so it can not teach you a selector that does nothing.
+loomark custom themes are plain CSS files. Start from [template.css](template.css): it is a working theme with every variable and a few selectors commented, and the same check that guards the built-in themes runs over it, so it can not teach you a selector that does nothing.
 
 ### CSS Variables
 
@@ -95,5 +95,5 @@ least one computed style.
 ### Tips
 
 - Theme files should be self-contained (no external imports)
-- Omitted variables inherit ColaMD's Light defaults, so override only the tokens your theme needs
+- Omitted variables inherit loomark's Light defaults, so override only the tokens your theme needs
 - Name the file descriptively: `dark-ocean.css`, `solarized-light.css`, etc.
