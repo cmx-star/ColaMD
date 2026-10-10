@@ -437,18 +437,6 @@ The maintainer also raised the mirror idea on 2026-09-11: loomark itself could s
 
 **Scope constraint (2026-09-11):** two complete image pipelines were declined this day (see Declined → Rich image pipelines). If this is ever restarted it must stay minimal: zero configuration by default, images written next to the document as relative references, no new menu, settings panel, floating toolbar, or other persistent UI.
 
-### Publish loomark for iOS
-
-**Source:** User request
-
-**Need:** Publish the iOS app under the unified `loomark` product name so anyone can install it from the App Store.
-
-**Scope:** Publish the main loomark app first: create the App Store Connect record, configure Release distribution signing, upload an archive, run internal and external TestFlight verification, prepare screenshots and store metadata, complete privacy and export-compliance declarations, submit App Review, and verify public installation plus `.md` / `.txt` opening after release. Defer the Share Extension until it has a clear user need; it is an optional later update, not a prerequisite for the first release.
-
-**Signing note:** Development signing is only for registered test devices. App Store distribution signing is a separate profile that Xcode can create and manage automatically from the company Apple Developer Program account. No manual profile editing is planned.
-
-**Status:** Deferred. First release scope is the main app only; Share Extension remains optional.
-
 ### Merge Windows menu bar into title bar
 
 **Source:** [#46](https://github.com/marswaveai/loomark/issues/46)
@@ -519,6 +507,12 @@ The status dot driven by file-watcher timing was removed on 2026-09-11. It could
 **Source:** [#67](https://github.com/marswaveai/loomark/pull/67)
 
 Two- and three-page reading layouts for ultrawide displays were declined. loomark is an editor, not a paginated reader; the feature costs ~480 lines of pagination logic, hijacks wheel/trackpad/page keys, and sits on the known-fragile CSS multicol + contenteditable ground (IME, cross-column selection, position loss after external reload) for a single edge-case scenario.
+
+### Publish loomark for iOS
+
+**Source:** User request
+
+Declined (2026-10-10). loomark targets macOS, Windows, Linux and the web only. The `mobile/ios` reader project was removed on the same day and mobile apps are no longer supported, so the App Store work recorded here (App Store Connect record, distribution signing, TestFlight, App Review) is not planned. The full original scope stays in git history before this date if the decision is ever revisited.
 
 ### Temporary same-directory document switcher
 
