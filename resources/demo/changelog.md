@@ -218,7 +218,7 @@ v2.8.1 的三端安装包没能构建出来，这一版补发。内容包含 v2.
 
 ## v2.0.6 · 打开所在文件夹修好了
 
-- **「打开所在文件夹」修好了**：这个按钮从 2.0.4 起就在标题栏里，但一次代码重构把它的接线删掉了，按钮一直停在禁用状态（[#83](https://github.com/marswaveai/loomark/issues/83)，[#84](https://github.com/marswaveai/loomark/pull/84)，感谢 @moyu12-ae）
+- **「打开所在文件夹」修好了**：这个按钮从 2.0.4 起就在标题栏里，但一次代码重构把它的接线删掉了，按钮一直停在禁用状态（[#83](https://github.com/marswaveai/colamd/issues/83)，[#84](https://github.com/marswaveai/colamd/pull/84)，感谢 @moyu12-ae）
 - **提示标签不再「穿透」**：悬停标题栏按钮时，提示标签此前被画在正文下面，看起来像半透明压在文字上
 
 ## v2.0.5 · 稳定性修复
@@ -226,12 +226,12 @@ v2.8.1 的三端安装包没能构建出来，这一版补发。内容包含 v2.
 - **撤销不再跨文档**：同一窗口切换文件后，撤销不会再把你带回上一篇文章的内容，也不会因此让自动保存把上一篇误写进当前文件
 - **复制不再多空行**：复制到微信、钉钉等聊天工具时，不再多出一堆空行
 - **输入更轻**：大纲面板隐藏时不再每帧重建，长文档打字的负担更小
-- **PDF 导出修复**：导出时不再把更新提示等浮层当成正文（[#71](https://github.com/marswaveai/loomark/issues/71)）
+- **PDF 导出修复**：导出时不再把更新提示等浮层当成正文（[#71](https://github.com/marswaveai/colamd/issues/71)）
 - **移除 Agent 活动指示器**：它只能根据文件变化的时间间隔猜测，无法区分 Agent 与其他外部写入，而内容实时更新本身已经说明了一切
 
 ## v2.0.3 · 查找替换与更可靠的更新
 
-- **大文档打开优化**：超过 512 KiB 的 Markdown 直接以源码模式打开，避免 Windows 上完整可视化解析造成长时间卡顿（[#63](https://github.com/marswaveai/loomark/issues/63)）
+- **大文档打开优化**：超过 512 KiB 的 Markdown 直接以源码模式打开，避免 Windows 上完整可视化解析造成长时间卡顿（[#63](https://github.com/marswaveai/colamd/issues/63)）
 - **查找与替换**：⌘F 查找面板支持替换当前匹配项或全部替换（⌘/Ctrl+Enter），所见即所得与源码模式均可用
 - **界面语言切换**：「视图 → 界面语言」可选中文或 English，全界面即时生效并记住选择
 - **更新下载反馈**：更新横幅实时显示下载进度，下载失败会提示并可重试，不再停留在「下载中」
@@ -240,7 +240,7 @@ v2.8.1 的三端安装包没能构建出来，这一版补发。内容包含 v2.
 ## v2.0.2 · 可调面板与大纲进度
 
 - **文件面板可调宽**：拖拽面板边缘即可调整宽度（180–420px），应用会记住你的选择
-- **大纲进度视图**：阅读时大纲自动高亮当前章节；点击大纲或文内锚点跳转后，落点标题会闪一次主题色高亮带（[#64](https://github.com/marswaveai/loomark/issues/64)）
+- **大纲进度视图**：阅读时大纲自动高亮当前章节；点击大纲或文内锚点跳转后，落点标题会闪一次主题色高亮带（[#64](https://github.com/marswaveai/colamd/issues/64)）
 
 ## v2.0.0 · 1000 Stars
 
@@ -268,7 +268,7 @@ v2.8.1 的三端安装包没能构建出来，这一版补发。内容包含 v2.
 - **v1.7.x**：源码模式切换、同目录文件列表、⌘F 搜索、⌘⇧E 插入 LaTeX 公式、HTML 导出、Windows 图片路径修复、VS Code 集成
 - **v1.6.x**：可勾选的待办列表、`==高亮==` 语法、Markdown 语法速查
 
-完整历史见 [GitHub Releases](https://github.com/marswaveai/loomark/releases)。
+完整历史见 [GitHub Releases](https://github.com/cmx-star/ColaMD/releases)。
 
 ---
 

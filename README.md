@@ -11,7 +11,7 @@ It offers true WYSIWYG editing, 4 built-in themes with custom-theme import, rich
 Whatever writes the file (an AI agent such as Claude Code or Codex, a script, or another editor), loomark shows the new content right away. No reopening, no manual refresh.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/release/marswaveai/loomark.svg)](https://github.com/marswaveai/loomark/releases)
+[![GitHub release](https://img.shields.io/github/release/cmx-star/ColaMD.svg)](https://github.com/cmx-star/ColaMD/releases)
 
 [Download](#download) | [Features](#features)
 
@@ -65,7 +65,7 @@ loomark does not ask you to change your habits. It works well alongside Obsidian
 
 ## Download
 
-> Check [Releases](https://github.com/marswaveai/loomark/releases) for the latest builds.
+> Check [Releases](https://github.com/cmx-star/ColaMD/releases) for the latest builds.
 
 | Platform | Format |
 |----------|--------|
@@ -75,7 +75,7 @@ loomark does not ask you to change your habits. It works well alongside Obsidian
 
 ## Roadmap
 
-loomark will keep growing as a focused, free Markdown editor. A full history of every release, in both languages, lives in [`resources/demo/changelog.md`](resources/demo/changelog.md), which the app also opens after an update. See the [Releases](https://github.com/marswaveai/loomark/releases) page for the latest builds.
+loomark will keep growing as a focused, free Markdown editor. A full history of every release, in both languages, lives in [`resources/demo/changelog.md`](resources/demo/changelog.md), which the app also opens after an update. See the [Releases](https://github.com/cmx-star/ColaMD/releases) page for the latest builds.
 
 ## License
 

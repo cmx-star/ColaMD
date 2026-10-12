@@ -22,7 +22,7 @@ loomark 支持下面这些 Markdown 格式。每个示例下方是它的源码�
 
 ## 链接
 
-[loomark](https://github.com/marswaveai/loomark)
+[loomark](https://github.com/cmx-star/ColaMD)
 
 Cmd/⌘+点击链接会在浏览器中打开；`[跳到某一节](#标题)` 会跳到文内对应的标题。
 

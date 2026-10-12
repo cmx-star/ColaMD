@@ -11,7 +11,7 @@ loomark 是一款开源、免费、优雅的 Markdown 编辑器，用于写作�
 无论是什么在写这个文件（Claude Code、Codex 这类 AI Agent，一个脚本，或另一个编辑器），loomark 都会立刻显示最新内容，不用重开文件，也不用手动刷新。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/release/marswaveai/loomark.svg)](https://github.com/marswaveai/loomark/releases)
+[![GitHub release](https://img.shields.io/github/release/cmx-star/ColaMD.svg)](https://github.com/cmx-star/ColaMD/releases)
 
 [下载](#下载) | [功能](#功能)
 
@@ -86,7 +86,7 @@ loomark 不要求你改变现有习惯，也适合与 Obsidian、Typora、VS Cod
 
 ## 下载
 
-> 查看 [Releases](https://github.com/marswaveai/loomark/releases) 获取最新构建。
+> 查看 [Releases](https://github.com/cmx-star/ColaMD/releases) 获取最新构建。
 
 | 平台      | 格式                   |
 | ------- | -------------------- |
@@ -96,7 +96,7 @@ loomark 不要求你改变现有习惯，也适合与 Obsidian、Typora、VS Cod
 
 ## 路线图
 
-loomark 会继续把「免费、优雅、专注」这件事做好。每个版本的完整历史（中英双语）都在 [`resources/demo/changelog.md`](resources/demo/changelog.md)，应用更新后也会自动打开它。最新构建见 [Releases](https://github.com/marswaveai/loomark/releases)。
+loomark 会继续把「免费、优雅、专注」这件事做好。每个版本的完整历史（中英双语）都在 [`resources/demo/changelog.md`](resources/demo/changelog.md)，应用更新后也会自动打开它。最新构建见 [Releases](https://github.com/cmx-star/ColaMD/releases)。
 
 ## 开源协议
 

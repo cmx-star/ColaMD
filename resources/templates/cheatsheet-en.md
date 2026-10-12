@@ -22,7 +22,7 @@ Source: `**bold**`, `*italic*`, `~~strikethrough~~`, and `==highlight==`.
 
 ## Links
 
-[loomark](https://github.com/marswaveai/loomark)
+[loomark](https://github.com/cmx-star/ColaMD)
 
 Hold Cmd / Ctrl while clicking a link to open it in your browser. `[Jump](#headings)` moves to a heading in the document.
 

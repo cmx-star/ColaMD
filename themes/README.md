@@ -2,7 +2,7 @@
 
 loomark ships 4 built-in themes in the menu (Light, Sepia, Solarized Dark, Nord), and this folder carries more styles you can import as custom themes. Every theme below is available as a standalone `.css` file: download it and place it in `~/.loomark/themes/`, or use **Theme > Import Theme** in loomark to import directly.
 
-See the [theme swatches](https://raw.githubusercontent.com/marswaveai/loomark/main/docs/images/theme-swatches.svg) for a visual preview.
+See the [theme swatches](https://raw.githubusercontent.com/cmx-star/ColaMD/main/docs/images/theme-swatches.svg) for a visual preview.
 
 ## Light Themes
 
