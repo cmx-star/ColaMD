@@ -2385,23 +2385,21 @@ async function init(): Promise<void> {
     '2.7.0': { zh: '这次换了编辑器内核', en: 'new editor core' },
     '2.7.1-beta.1': { zh: '选中一段不再翻成源码', en: 'selections stay rendered' }
   }
-  let updateDownloaded = false
-  let updateVersion = ''
+  /** 发布页地址；为空表示还没查到新版本，点按钮就先查。 */
+  let updateUrl = ''
   let updateBusy = false
   function showUpdateBanner(version: string): void {
     const zh = isChinese()
     const note = UPDATE_NOTES[version]
     const suffix = note ? ` · ${zh ? note.zh : note.en}` : ''
-    updateBannerTextEl().textContent = updateDownloaded
-      ? (zh ? `新版本 v${version} 已就绪${suffix}` : `Update v${version} is ready${suffix}`)
-      : (zh ? `发现新版本 v${version}${suffix}` : `Update v${version} available${suffix}`)
-    updateBannerActionEl().textContent = updateDownloaded ? (zh ? '重启安装' : 'Restart') : (zh ? '更新' : 'Update')
+    updateBannerTextEl().textContent = zh ? `发现新版本 v${version}${suffix}` : `Update v${version} available${suffix}`
+    updateBannerActionEl().textContent = zh ? '打开下载页' : 'Download page'
     updateBannerActionEl().disabled = false
     updateBannerEl().hidden = false
   }
 
   /** One flow serves both the menu item and the banner button: check first,
-   *  then let the user start the download from the banner. */
+   *  then open the release page in the browser. The app never downloads. */
   async function runUpdateCheck(): Promise<void> {
     if (updateBusy) return
     updateBusy = true
@@ -2413,6 +2411,7 @@ async function init(): Promise<void> {
     try {
       const info = await api.checkForUpdates()
       if (!info) {
+        updateUrl = ''
         updateBannerTextEl().textContent = zh ? '已是最新版本' : 'You are up to date'
         updateBannerActionEl().hidden = true
         window.setTimeout(() => {
@@ -2420,8 +2419,7 @@ async function init(): Promise<void> {
           updateBannerActionEl().hidden = false
         }, 3000)
       } else {
-        updateVersion = info.version
-        updateDownloaded = info.downloaded
+        updateUrl = info.url
         showUpdateBanner(info.version)
       }
     } catch {
@@ -2437,48 +2435,14 @@ async function init(): Promise<void> {
   }
   api.onMenuCheckUpdates(() => void runUpdateCheck())
 
-  api.onUpdateAvailable((version) => {
-    updateVersion = version
-    updateDownloaded = false
-    showUpdateBanner(version)
-  })
-  api.onUpdateDownloaded((version) => {
-    updateDownloaded = true
-    showUpdateBanner(version)
-  })
-  api.onUpdateProgress((percent) => {
-    if (updateDownloaded) return
-    updateBannerActionEl().textContent = isChinese() ? `下载中 ${percent}%` : `Downloading ${percent}%`
-  })
-  api.onUpdateError(() => {
-    if (updateDownloaded) return
-    updateBannerActionEl().textContent = isChinese() ? '下载失败，点击重试' : 'Failed, retry'
-    updateBannerActionEl().disabled = false
-  })
-
-  updateBannerActionEl().addEventListener('click', async () => {
+  updateBannerActionEl().addEventListener('click', () => {
     if (updateBusy) return
-    if (updateDownloaded) {
-      await api.installUpdate()
-      return
-    }
-    if (!updateVersion) {
+    if (!updateUrl) {
       void runUpdateCheck()
       return
     }
-    updateBusy = true
-    updateBannerActionEl().textContent = isChinese() ? '下载中…' : 'Downloading…'
-    updateBannerActionEl().disabled = true
-    try {
-      await api.downloadUpdate()
-    } catch {
-      // The 'update-error' event may already have reset the label; this
-      // catch covers the path where the IPC call itself rejects.
-      updateBannerActionEl().textContent = isChinese() ? '下载失败，点击重试' : 'Failed, retry'
-      updateBannerActionEl().disabled = false
-    } finally {
-      updateBusy = false
-    }
+    // 留给浏览器：下载、校验和安装都归它和操作系统管。
+    api.openExternal(updateUrl)
   })
   document.getElementById('update-banner-dismiss')!.addEventListener('click', () => {
     updateBannerEl().hidden = true
@@ -2500,6 +2464,20 @@ async function init(): Promise<void> {
 // The shell hands the renderer one object with the shape in platform-api.ts, built
 // before anything reads it.
 if (!window.loomark) window.loomark = createTauriApi()
+
+// Errors after init leave no trace in a packaged app either. Same log, and the
+// same error is written once per session so a render loop cannot fill the disk.
+const reportedErrors = new Set<string>()
+function reportRuntimeError(where: string, err: unknown): void {
+  const text = err instanceof Error ? (err.stack ?? err.message) : String(err)
+  const key = text.slice(0, 300)
+  if (reportedErrors.has(key) || reportedErrors.size >= 50) return
+  reportedErrors.add(key)
+  console.error(`loomark ${where}:`, err)
+  void window.loomark?.logRendererError(`[${where}] ${text}`)
+}
+window.addEventListener('error', (event) => reportRuntimeError('error', event.error ?? event.message))
+window.addEventListener('unhandledrejection', (event) => reportRuntimeError('unhandledrejection', event.reason))
 
 // A packaged app has no console: without the IPC copy of this, a renderer that
 // dies during init leaves nothing behind but a white window (#126).

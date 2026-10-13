@@ -571,21 +571,8 @@ pub async fn open_external(window: WebviewWindow, url: String) -> Result<bool, S
 /// Check GitHub for a newer stable release. `None` means up to date; a network
 /// failure surfaces as an error, never silently as "no update".
 #[tauri::command]
-pub async fn check_for_update(app: tauri::AppHandle) -> Result<Option<crate::update::UpdateInfo>, String> {
-    crate::update::check(&app).await
-}
-
-/// Download the chosen installer into the updates dir; progress events go to
-/// the renderer (`update-progress`).
-#[tauri::command]
-pub async fn download_update(app: tauri::AppHandle) -> Result<crate::update::UpdateInfo, String> {
-    crate::update::download(&app).await
-}
-
-/// Open a downloaded installer with the system handler.
-#[tauri::command]
-pub async fn install_update(path: String) -> Result<bool, String> {
-    crate::update::install(path).await
+pub async fn check_for_update() -> Result<Option<crate::update::UpdateInfo>, String> {
+    crate::update::check().await
 }
 
 /// Open a local Markdown file in a tab of its own, landing on `fragment` or `line`.

@@ -18,6 +18,20 @@ export type ImageExportPreset = 'desktop' | 'mobile'
 export type FileManagerName = 'finder' | 'explorer' | 'file-manager'
 
 /**
+ * 外壳查到的新版本。
+ *
+ * 只带一个 `url`：横幅点一下就交给系统浏览器打开发布页，下载、校验、安装都属于
+ * 浏览器和操作系统。应用内那套流式下载在 2026-10-12 删掉了——它重复浏览器已有的
+ * 能力，还多带一份自己的 SHA-256 校验，反而在浏览器能打开的地方失败。
+ */
+export type AvailableUpdate = {
+  version: string
+  currentVersion: string
+  tag: string
+  url: string
+}
+
+/**
  * 交给外壳落盘的产物。
  *
  * base64 而不是原始字节：外壳用 Tauri 的 raw payload 通道时整个请求体就是字节，命令
@@ -129,15 +143,9 @@ export interface LoomarkApi {
   reportExternalConflict: (content: string) => Promise<void>
   onExternalConflictResult: (callback: (result: { action: 'keep' | 'load'; content?: string; recoveryPath?: string }) => void) => void
   revealPath: (target: string) => Promise<boolean>
-  onUpdateAvailable: (callback: (version: string) => void) => void
-  onUpdateDownloaded: (callback: (version: string) => void) => void
-  onUpdateProgress: (callback: (percent: number) => void) => void
-  onUpdateError: (callback: () => void) => void
-  downloadUpdate: () => Promise<void>
-  installUpdate: () => Promise<void>
-  /** Ask the shell to check GitHub; resolves with update info or null when
+  /** Ask the shell to check GitHub; resolves with the newer release, or null when
    *  this build is current. Rejects on network failure. */
-  checkForUpdates: () => Promise<{ version: string; url: string; path: string; downloaded: boolean } | null>
+  checkForUpdates: () => Promise<AvailableUpdate | null>
   /** Menu → 帮助 → 检查更新: the shell relays the click; the renderer drives
    *  the same flow the update banner uses. */
   onMenuCheckUpdates: (callback: () => void) => void

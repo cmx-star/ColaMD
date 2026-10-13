@@ -1,31 +1,23 @@
-// Desktop self-update: check GitHub releases, download the installer, open it.
+// Desktop update check: ask GitHub whether a newer stable release exists, then hand
+// the user over to that release's page in the browser.
 //
-// Mirrors the flow proven in deepseek-harness-desktop: release metadata comes from
-// GitHub's HTML/atom pages (api.github.com is rate-limited to 60 req/h unauthenticated),
-// the artifact is streamed to `<user data>/updates/` with a SHA-256 check, and the
-// system installer is opened either on demand or when the app exits with a download
-// pending. No Apple certificate involved: tamper protection is the digest, not code
-// signing.
+// Release metadata comes from GitHub's HTML/atom pages (api.github.com is rate-limited
+// to 60 req/h unauthenticated). Picking the artifact here rather than in the browser is
+// what makes the banner trustworthy: a release with nothing for this platform is not an
+// update this machine can install, so it is never announced.
+//
+// Downloading belongs to the browser and the OS (2026-10-12). The in-app download
+// duplicated the browser, carried its own SHA-256 check, and failed on links where the
+// browser would have succeeded; the banner opens the release page instead.
 
-use std::io::Write;
-use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde::Serialize;
-use sha2::Digest;
-use tauri::Emitter;
-
-use crate::i18n::t;
-use crate::paths;
 
 /// GitHub repository the installers are published to.
 const REPO_URL: &str = "https://github.com/cmx-star/ColaMD";
-/// Where downloaded installers live, under the user data dir.
-const UPDATES_DIR: &str = "updates";
 /// Check requests are tiny; keep them snappy.
 const CHECK_TIMEOUT: Duration = Duration::from_secs(5);
-/// Installer downloads can be hundreds of MB on slow links.
-const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(1800);
 const USER_AGENT: &str = "loomark-desktop";
 
 // --- metadata ----------------------------------------------------------------
@@ -37,22 +29,8 @@ pub struct UpdateInfo {
     pub version: String,
     pub current_version: String,
     pub tag: String,
-    /// Download page, opened if the user prefers the browser.
+    /// The release page the banner button opens.
     pub url: String,
-    /// Chosen artifact's file name.
-    pub asset_name: String,
-    /// Absolute path once downloaded; empty until then.
-    pub path: String,
-    pub downloaded: bool,
-}
-
-/// Progress for the renderer's banner, one event per chunk.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadProgress {
-    pub percentage: f64,
-    pub downloaded: u64,
-    pub total: u64,
 }
 
 fn http_client(timeout: Duration) -> reqwest::Client {
@@ -101,22 +79,6 @@ fn parse_asset_names(html: &str, tag: &str) -> Vec<String> {
         rest = after;
     }
     names
-}
-
-/// The digest for one specific asset. Each artifact carries its own `sha256:…`
-/// on the page, so the lookup must anchor on the chosen name, not the first
-/// hash on the page.
-fn parse_digest(html: &str, asset_name: &str) -> Option<String> {
-    let pos = html.find(asset_name)?;
-    let mut end = (pos + 4096).min(html.len());
-    while end > pos && !html.is_char_boundary(end) {
-        end -= 1;
-    }
-    let window = &html[pos..end];
-    let hash_start = window.find("sha256:")? + "sha256:".len();
-    let hash = &window[hash_start..];
-    let hex_len = hash.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(hash.len());
-    (hex_len == 64).then(|| hash[..64].to_ascii_lowercase())
 }
 
 /// The version this build reports as its own.
@@ -194,9 +156,16 @@ fn pick_asset(assets: &[String]) -> Option<String> {
     best.map(|(_, _, name)| name)
 }
 
-/// Fetch the newest stable release that has an artifact for this machine.
-async fn fetch_latest_release() -> Result<Option<(String, String, String, Option<String>)>, String> {
-    // (tag, asset_name, download_url, digest)
+/// The page a user downloads from by hand. Pointing at the tag rather than at
+/// `/releases/latest` keeps the link honest if another release lands between the
+/// check and the click.
+fn release_page(tag: &str) -> String {
+    format!("{REPO_URL}/releases/tag/{tag}")
+}
+
+/// Fetch the newest stable release that has an artifact for this machine, as
+/// `(tag, release page)`.
+async fn fetch_latest_release() -> Result<Option<(String, String)>, String> {
     let client = http_client(CHECK_TIMEOUT);
     let feed_url = format!("{REPO_URL}/releases.atom");
     let feed = client
@@ -218,229 +187,31 @@ async fn fetch_latest_release() -> Result<Option<(String, String, String, Option
         let Ok(html) = client.get(&assets_url).send().await.map_err(|e| format!("UPDATE_CHECK: {e}"))?.text().await else {
             continue;
         };
-        let assets = parse_asset_names(&html, &tag);
-        let Some(asset) = pick_asset(&assets) else { continue };
-        let digest = parse_digest(&html, &asset);
-        let url = format!("{REPO_URL}/releases/download/{tag}/{asset}");
-        return Ok(Some((tag, asset, url, digest)));
+        // No artifact for this platform means nothing to install; stay quiet
+        // rather than send the user to a page with nothing for them.
+        if pick_asset(&parse_asset_names(&html, &tag)).is_none() {
+            continue;
+        }
+        let url = release_page(&tag);
+        return Ok(Some((tag, url)));
     }
     Ok(None)
-}
-
-// --- pending install ---------------------------------------------------------
-
-/// The installer waiting to be opened at exit: (path, version).
-fn pending_path() -> PathBuf {
-    paths::user_data_dir().join("pending-update.json")
-}
-
-fn read_pending() -> Option<(PathBuf, String)> {
-    let raw = std::fs::read_to_string(pending_path()).ok()?;
-    let value: serde_json::Value = serde_json::from_str(&raw).ok()?;
-    Some((
-        PathBuf::from(value.get("path")?.as_str()?),
-        value.get("version")?.as_str()?.to_string(),
-    ))
-}
-
-fn write_pending(path: &Path, version: &str) {
-    let value = serde_json::json!({ "path": path.to_string_lossy(), "version": version });
-    let _ = std::fs::write(pending_path(), value.to_string());
-}
-
-fn clear_pending() {
-    let _ = std::fs::remove_file(pending_path());
-}
-
-pub fn updates_dir() -> PathBuf {
-    paths::user_data_dir().join(UPDATES_DIR)
-}
-
-/// Called from the exit path: if an installer was downloaded but never opened,
-/// open it now, unless the running version is already at least as new (the
-/// user may have updated by hand in between).
-pub fn launch_pending_installer() {
-    let Some((path, version)) = read_pending() else { return };
-    clear_pending();
-    if !is_newer(&version, &current_version()) {
-        return;
-    }
-    if !path.is_file() {
-        return;
-    }
-    trace_open(&path, "exit");
-    open_installer_now(&path);
-}
-
-// --- opening the installer ---------------------------------------------------
-
-/// Guard against path traversal and symlinks escaping the updates dir.
-fn path_is_inside_updates(path: &Path) -> bool {
-    let canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    let dir = std::fs::canonicalize(updates_dir()).unwrap_or_else(|_| updates_dir());
-    canonical.starts_with(&dir)
-}
-
-fn open_installer_now(path: &Path) -> bool {
-    if !path_is_inside_updates(path) {
-        crate::trace::trace(|| format!("refusing installer outside updates dir: {}", path.display()));
-        return false;
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755));
-    }
-    // The installer replaces the app; hand it to the OS and let it run.
-    open_with_system(path)
-}
-
-#[cfg(target_os = "macos")]
-fn open_with_system(path: &Path) -> bool {
-    std::process::Command::new("open").arg(path).spawn().is_ok()
-}
-
-#[cfg(target_os = "windows")]
-fn open_with_system(path: &Path) -> bool {
-    // `open` on Windows would block explorer-less environments; spawn detached.
-    std::process::Command::new("cmd")
-        .args(["/C", "start", "", &path.to_string_lossy()])
-        .creation_flags(0x0000_0008) // DETACHED_PROCESS
-        .spawn()
-        .is_ok()
-}
-
-#[cfg(all(unix, not(target_os = "macos")))]
-fn open_with_system(path: &Path) -> bool {
-    std::process::Command::new("xdg-open").arg(path).spawn().is_ok()
-}
-
-#[cfg(target_os = "windows")]
-trait WindowsCreationFlags {
-    fn creation_flags(&mut self, flags: u32) -> &mut Self;
-}
-
-#[cfg(target_os = "windows")]
-impl WindowsCreationFlags for std::process::Command {
-    fn creation_flags(&mut self, flags: u32) -> &mut Self {
-        std::os::windows::process::CommandExt::creation_flags(self, flags)
-    }
-}
-
-fn trace_open(path: &Path, when: &str) {
-    crate::trace::trace(|| format!("opening installer ({when}): {}", path.display()));
 }
 
 // --- commands ----------------------------------------------------------------
 
 /// Ask GitHub whether a newer stable release with an artifact for this machine
 /// exists. Returns `None` when already up to date.
-pub async fn check(_app: &tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
-    let Some((tag, asset, _url, _digest)) = fetch_latest_release().await? else {
+pub async fn check() -> Result<Option<UpdateInfo>, String> {
+    let Some((tag, url)) = fetch_latest_release().await? else {
         return Ok(None);
     };
-    let version = tag.trim_start_matches('v').to_string();
-    let target = updates_dir().join(&asset);
-    let downloaded = target.is_file();
     Ok(Some(UpdateInfo {
-        version: version.clone(),
+        version: tag.trim_start_matches('v').to_string(),
         current_version: current_version(),
         tag,
-        url: format!("{REPO_URL}/releases/latest"),
-        asset_name: asset,
-        path: target.to_string_lossy().to_string(),
-        downloaded,
+        url,
     }))
-}
-
-/// Stream the chosen artifact into the updates dir, verify its digest, and
-/// register it as the pending installer. Progress goes to the renderer.
-pub async fn download(app: &tauri::AppHandle) -> Result<UpdateInfo, String> {
-    let Some((tag, asset, url, digest)) = fetch_latest_release().await? else {
-        return Err(t("没有可用的更新", "No update available").to_string());
-    };
-    let version = tag.trim_start_matches('v').to_string();
-    let dir = updates_dir();
-    let _ = std::fs::create_dir_all(&dir);
-    let target = dir.join(&asset);
-    let part = dir.join(format!("{asset}.part"));
-
-    if !target.is_file() {
-        download_file(&part, &url, digest.as_deref(), app).await?;
-        std::fs::rename(&part, &target).map_err(|error| format!("UPDATE_RENAME: {error}"))?;
-    }
-
-    // Remember it even if the user quits before clicking install.
-    write_pending(&target, &version);
-
-    Ok(UpdateInfo {
-        version,
-        current_version: current_version(),
-        tag,
-        url: format!("{REPO_URL}/releases/latest"),
-        asset_name: asset,
-        path: target.to_string_lossy().to_string(),
-        downloaded: true,
-    })
-}
-
-async fn download_file(target: &Path, url: &str, digest: Option<&str>, app: &tauri::AppHandle) -> Result<(), String> {
-    let client = http_client(DOWNLOAD_TIMEOUT);
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .and_then(|res| res.error_for_status())
-        .map_err(|error| format!("UPDATE_DOWNLOAD: {error}"))?;
-    let total = response.content_length().unwrap_or(0);
-    let mut file = std::fs::File::create(target).map_err(|error| format!("UPDATE_DOWNLOAD: {error}"))?;
-    let mut hasher = sha2::Sha256::new();
-    let mut downloaded: u64 = 0;
-    let mut last_reported: u64 = 0;
-
-    let mut stream = response.bytes_stream();
-    use futures_util::StreamExt;
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|error| format!("UPDATE_DOWNLOAD: {error}"))?;
-        file.write_all(&chunk).map_err(|error| format!("UPDATE_DOWNLOAD: {error}"))?;
-        hasher.update(&chunk);
-        downloaded += chunk.len() as u64;
-        // Throttle the event stream: one per full percent is plenty for a banner.
-        if downloaded - last_reported >= total / 100.max(1) || downloaded == total {
-            last_reported = downloaded;
-            let _ = app.emit(
-                "update-progress",
-                DownloadProgress {
-                    percentage: if total > 0 { downloaded as f64 / total as f64 * 100.0 } else { 0.0 },
-                    downloaded,
-                    total,
-                },
-            );
-        }
-    }
-    drop(file);
-
-    if let Some(expected) = digest {
-        let actual = format!("{:x}", hasher.finalize());
-        if actual != expected.to_ascii_lowercase() {
-            let _ = std::fs::remove_file(target);
-            return Err("UPDATE_INTEGRITY_CHECK_FAILED".to_string());
-        }
-    }
-    Ok(())
-}
-
-/// Open a downloaded installer on the user's click.
-pub async fn install(path: String) -> Result<bool, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Ok(false);
-    }
-    let opened = open_installer_now(&path);
-    if opened {
-        clear_pending();
-    }
-    Ok(opened)
 }
 
 #[cfg(test)]
@@ -482,16 +253,6 @@ mod tests {
     }
 
     #[test]
-    fn digest_is_picked_for_the_chosen_asset() {
-        let html = concat!(
-            r#"loomark_2.9.0_aarch64.dmg <code>sha256:1111111111111111111111111111111111111111111111111111111111111111</code>"#,
-            r#"loomark_2.9.0_x64.dmg <code>sha256:2222222222222222222222222222222222222222222222222222222222222222</code>"#
-        );
-        let digest = parse_digest(html, "loomark_2.9.0_x64.dmg").expect("digest");
-        assert!(digest.ends_with("2222"));
-    }
-
-    #[test]
     fn picks_the_platform_asset_with_the_best_arch() {
         let assets = vec![
             "loomark_2.9.0_x64.dmg".to_string(),
@@ -502,5 +263,13 @@ mod tests {
         assert_eq!(pick_asset(&assets).as_deref(), Some("loomark_2.9.0_aarch64.dmg"));
         #[cfg(not(target_arch = "aarch64"))]
         assert_eq!(pick_asset(&assets).as_deref(), Some("loomark_2.9.0_x64.dmg"));
+    }
+
+    #[test]
+    fn release_page_points_at_the_announced_tag() {
+        assert_eq!(
+            release_page("v2.9.0"),
+            "https://github.com/cmx-star/ColaMD/releases/tag/v2.9.0"
+        );
     }
 }

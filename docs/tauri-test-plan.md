@@ -2,7 +2,7 @@
 
 这份文档给**手工验收**用：告诉你跑什么、怎么跑、期望看到什么，以及哪些是**已知未移植**（不要当 bug 报）。
 
-背景与阶段划分见 [tauri-migration-plan.md](tauri-migration-plan.md)。当前进度：外壳（P1）、文件 IO 与监听、关闭保护、冲突流程、菜单、主题、字体、HTML 导出已完成；导出 PDF/图片/Word、自动更新、右键菜单尚未移植。
+背景与阶段划分见 [tauri-migration-plan.md](tauri-migration-plan.md)。当前进度：外壳（P1）、文件 IO 与监听、关闭保护、冲突流程、菜单、主题、字体、HTML 导出已完成；导出 PDF/图片/Word、右键菜单尚未移植。
 
 ## 一、怎么跑起来
 
@@ -296,6 +296,19 @@ ls -la ~/Downloads/loomark-test/big.md
 
 文件 → 新建打开第二个窗口：两个窗口各自维护文件、保存与关闭保护；在 A 窗口导入主题或在字体对话框改字体，B 窗口应同步（字体改动会广播到其它窗口）。
 
+### T14 检查更新
+
+帮助 → 检查更新。期望：
+
+| 情况 | 期望 |
+| --- | --- |
+| 本地已是最新 | 横幅显示「已是最新版本」，约 3 秒后自己收起 |
+| GitHub 上有更新的稳定版，且带本平台安装包 | 横幅显示「发现新版本 vX.Y.Z」，点「打开下载页」由**系统浏览器**打开该 tag 的发布页 |
+| GitHub 上有更新的稳定版，但没有本平台安装包 | 不提示（提示了也没东西可装） |
+| 网络不通或超时（5 秒） | 横幅显示「检查更新失败，请稍后重试」，约 3 秒后收起 |
+
+仓库与请求头都写在 `src-tauri/src/update.rs`（`REPO_URL`、`USER_AGENT`）。
+
 ## 三、已知未移植（不要当 bug 报）
 
 | 项 | 原因 |
@@ -303,7 +316,6 @@ ls -la ~/Downloads/loomark-test/big.md
 | 导出 PDF | Electron 用 `printToPDF`，Tauri 与系统 WebView 都没有等价能力。计划改走 print CSS + 系统打印对话框（「存储为 PDF」由用户点），见迁移计划 R1 |
 | 导出图片 | 原实现用隐藏窗口截图。浏览器不暴露「截取本 webview」，需要按平台写原生桥接（WKWebView takeSnapshot / WebView2 CapturePreview / WebKitGTK snapshot），见 R3 |
 | 导出 Word | 生成逻辑依赖 `docx` 包与 Electron 的 nativeImage，要搬到渲染层重建 |
-| 检查更新 | 菜单项置灰，等 `tauri-plugin-updater` 接入密钥与 latest.json |
 | 文件面板 / 标签页右键菜单 | 尚未接 Tauri 的原生菜单弹出 |
 | 窗口大小与缩放记忆 | 尚未接 `window-state.json` |
 | 会话恢复策略 | Electron 版本身待重设计，未搬 |

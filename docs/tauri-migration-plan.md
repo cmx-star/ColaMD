@@ -157,7 +157,7 @@ Windows 的 WebView2 与 Linux 的 webkit2gt4 在 CI 目标平台安装。
 | R2 | macOS WKWebView 的中文 IME 组合行为未测 | P1 起每个阶段跑中文输入冒烟：全拼、候选上屏、组合中回车 |
 | R3 | 图片导出没有 capturePage 等价能力 | 原生截图桥接；兜底前端 SVG 转 canvas（字体内嵌代价大，应急用） |
 | R4 | Windows WebView2 缺失（LTSC 等） | 引导式下载加提示页，安装说明写清 |
-| R5 | 自动更新链路变更 | tauri-plugin-updater 加 latest.json（公开仓库可直接用 GitHub Releases），密钥进 CI secrets |
+| R5 | 自动更新链路变更 | 已定案（2026-10-12）：应用只查版本、不打安装包，横幅把发布页交给浏览器，因此不需要 updater 插件、密钥对与 latest.json。解析逻辑仍留在 `update.rs`，改动见 [tauri-test-plan.md](tauri-test-plan.md) 的 T14 |
 | R6 | Linux WebKitGTK 渲染差异 | check-theme-colors 加截图比对；兜底 Linux 暂缓发布，不阻塞 mac/win |
 | R7 | 迁移期 Electron 版并行发版 | 冻结 feature 进 tauri-migration，bugfix 仍进 main，合并前 rebase |
 | R8 | 验证脚本依赖 CDP 远程调试 | 候选 A：dev 构建开放 CDP 端口；候选 B：应用内验证页。P7 先试 A |
