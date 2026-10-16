@@ -285,13 +285,32 @@ function installEditorInteractions(root: HTMLElement, view: EditorView): void {
     })
   })
 
-  // 点一下被替换掉的块（公式、图片、表格、图、HTML），把光标放进它的源码里就地改。
+  // 表格：按点到的那一格落光标（#153）。
+  //
+  // 必须挂在 mousedown 并在**捕获阶段**拦下来。挂 click 不行：mousedown 时 CM6 先把
+  // 光标放到块开头，isBlockActive 一看光标已经在块里，整块退回源码，widget 随即从
+  // DOM 上摘掉；等 click 事件到达时，它的 target 已经不在树上，算不出点到哪一格
+  // （实测连跑三轮都是这样：源码退回了，打的字却落在表格开头）。
+  root.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return
+    const widget = tableWidgetOf(e.target)
+    if (!widget) return
+    const anchor = tableCellAnchor(view, widget, e)
+    if (anchor === null) return
+    e.preventDefault()
+    e.stopPropagation()
+    view.dispatch({ selection: { anchor }, scrollIntoView: true })
+    view.focus()
+  }, true)
+
+  // 点一下被替换掉的块（公式、图片、图、HTML），把光标放进它的源码里就地改。
   //
   // 曾经只有公式有这么一条路，而且点一下会弹一个编辑框，框里还得再填一次公式（而且填的
   // 是空白的）。公式本来就是几行文字，光标进去就能改，不需要第二个地方放它。
   // #138 报上来：换内核之后表格、图、图片都点不进去了，而 2.6 是可以改的。
   // 现在每个替换块都带着自己的源码区间（见 live-preview 的 withSourceRange），
-  // 一个处理器管全部。
+  // 一个处理器管全部；块级 widget 的光标落点有 isBlockActive 兜着，光标进去就露源码。
+  // 表格不在这里：它按点到的那一格落光标，走上面那条 mousedown。
   root.addEventListener('click', (e) => {
     const widget = (e.target as HTMLElement).closest('[data-source-from]') as HTMLElement | null
     if (!widget) return
@@ -300,10 +319,56 @@ function installEditorInteractions(root: HTMLElement, view: EditorView): void {
     if (!Number.isFinite(from) || !Number.isFinite(to)) return
     e.preventDefault()
     // 光标放在这一段的开头，**不要**选中整段：露不露源码的判据是「有没有一个空光标落在
-    // 这一段里」（见 live-preview 的 isActiveRange），拉出选区反而会让它继续藏着。
+    // 这一段里」（见 live-preview 的 isBlockActive），拉出选区反而会让它继续藏着。
     view.dispatch({ selection: { anchor: from }, scrollIntoView: true })
     view.focus()
   })
+}
+
+/** 事件目标所在的表格 widget。 */
+function tableWidgetOf(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof HTMLElement)) return null
+  return target.closest('.cm-md-table-widget')
+}
+
+/**
+ * 点在表格的哪一格，就把光标放到源码里那一格的开头（#153）。
+ *
+ * 表格是整块替换渲染的，光标落进块里才会露源码，所以在点到之前，落在哪儿全靠算。
+ * 一律落在块开头的话，点第三行却在表头打字，第一个字就把表格拆散了：渲染好的表格
+ * 会整块退回 markdown 源码（#153 报的）。
+ *
+ * 行从点到的 `<tr>` 数，列从点到的 `<td>` 数，再按源码里未转义的 `|` 对齐；
+ * 拆法与 live-preview 的 parseTable 保持一致（`\|` 不算分隔符）。
+ */
+function tableCellAnchor(view: EditorView, widget: HTMLElement, e: MouseEvent): number | null {
+  const target = e.target
+  if (!(target instanceof HTMLElement)) return null
+  const row = target.closest('tr')
+  if (!row) return null
+  const rowIndex = [...widget.querySelectorAll('tr')].indexOf(row)
+  if (rowIndex < 0) return null
+  const cell = target.closest('th, td')
+  const cellIndex = cell ? [...row.children].indexOf(cell) : 0
+
+  const doc = view.state.doc
+  const header = doc.lineAt(Number(widget.dataset.sourceFrom))
+  // 源码里表头下面还有一行分隔行，所以正文行比渲染出来的行号多一
+  const sourceLine = rowIndex === 0 ? header.number : header.number + rowIndex + 1
+  if (sourceLine > doc.lines) return null
+  const line = doc.line(sourceLine)
+  return tableCellStart(line.text, line.from, Math.max(0, cellIndex))
+}
+
+/** 表格源码行里第 index 格的起始位置。 */
+function tableCellStart(text: string, from: number, index: number): number {
+  let i = text.startsWith('|') ? 1 : 0
+  const starts = [from + i]
+  for (; i < text.length; i++) {
+    if (text[i] === '\\' && text[i + 1] === '|') { i++; continue }
+    if (text[i] === '|') starts.push(from + i + 1)
+  }
+  return starts[Math.min(index, starts.length - 1)]
 }
 
 /** 写剪贴板。`navigator.clipboard` 在个别环境下会被拒，退回 execCommand。 */

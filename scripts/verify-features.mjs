@@ -147,6 +147,10 @@ function judge(name, value) {
       ? null : bad(`token=${value.tokens} 颜色种类=${value.colors}`)
     case '语言名压淡': return value >= 1 ? null : bad(`语言名标注=${value}`)
     case '代码块复制按钮': return value >= 1 ? null : bad(`按钮数=${value}`)
+    case '代码块底色不压住选区（#154）':
+      return value.lineBg === 'rgba(0, 0, 0, 0)' && value.underBg !== 'rgba(0, 0, 0, 0)' &&
+        Number(value.underZ) < Number(value.selLayerZ)
+        ? null : bad(`行底色=${value.lineBg} 底层底色=${value.underBg} 底层 z=${value.underZ} 选区层 z=${value.selLayerZ}`)
     case '属性区收起': return value.count === 0
       ? null : bad(`属性区不该渲染出来，却画了 ${value.count} 个（光标没在属性区里）`)
     case '脚注渲染': return value >= 1 ? null : bad(`refs=${value}`)

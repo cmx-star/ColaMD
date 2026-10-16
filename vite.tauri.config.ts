@@ -8,6 +8,9 @@ import { resolve } from 'node:path'
 export default defineConfig({
   root: resolve(__dirname, 'src/renderer'),
   base: './',
+  resolve: {
+    dedupe: ['@codemirror/state', '@codemirror/view', '@codemirror/language', '@lezer/common', '@lezer/highlight']
+  },
   build: {
     outDir: resolve(__dirname, 'dist-tauri/renderer'),
     emptyOutDir: true,

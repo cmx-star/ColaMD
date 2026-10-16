@@ -8,6 +8,17 @@
 
 ## 同步检查记录
 
+### 2026-10-16：上游 3 笔提交定向同步（#154、#153）
+
+- 上游 `marswaveai/colamd`（`upstream/main`）在 `a8d19a2` 之后提交了 3 笔改动：
+  - `f2bccf3`：`fix(editor): 代码块底色画到选区层下面，选中看得见高亮 (#154)`
+  - `42c2e3a` + `61d83ac`：`feat(editor): 光标进块就露出这一块的源码，表格按点到的格落光标 (#153)`
+- 评估与采纳：两项均为 CodeMirror 6 渲染层与编辑器交互改进，完全适用于 Tauri 版。已定向移植：
+  - `src/renderer/themes/editor-preview.css`：代码块底色下移至 `::before`（z-index -3）
+  - `src/renderer/editor/live-preview.ts`：引入 `isBlockActive` 块级源码展开逻辑
+  - `src/renderer/editor/editor.ts`：表格单元格按格定位（`tableCellAnchor`）及 mousedown 拦截
+  - `src/renderer/verify/features-check.ts` / `scripts/verify-features.mjs`：补充层序测试断言
+
 ### 2026-10-10：上游无新内容可同步，本地已领先
 
 按 `git fetch upstream` 后的实测，同步检查结论如下。

@@ -291,14 +291,14 @@ evaluate separately, in order of likely value: drag an image file into the edito
 a reference (destination policy for assets TBD); drag table rows/columns to reorder;
 table right-click insert/delete row/column. None is scheduled; each needs its own decision.
 
-### Selecting text inside a rendered table
+### Selecting text inside a rendered table (#141, #153)
 
-**Source:** reported 2026-10-09 (Chinese: "md 渲染模式没法选中表格文字")
+**Source:** reported 2026-10-09 (Chinese: "md 渲染模式没法选中表格文字"), [#141](https://github.com/marswaveai/colamd/issues/141), [#153](https://github.com/marswaveai/colamd/issues/153)
 
-**Status: OPEN — not scheduled, not declined.** A reader cannot drag-select the text inside a
-rendered table. The cause is understood and measured; what is missing is a decision about which
-trade to make, so this is recorded here rather than closed.
+**Status: PARTIALLY RESOLVED / OPEN.**
+2026-10-15 changed what a click does (#153): block widgets reveal their Markdown while the caret is inside, and clicking a table cell lands the caret in that cell of the source (`isBlockActive` in `live-preview.ts`, `tableCellAnchor` in `editor.ts`). The reported problem, that typing after clicking a table destroyed it, is gone with that.
 
+Still open: arbitrary text selection inside the rendered table itself without entering source mode.
 The rendered table is a block `WidgetType` replacement: the table occupies one document range, and
 the text inside it belongs to no document position. Dragging over it does produce a DOM selection,
 but CodeMirror recomputes the selection from pointer coordinates on `mouseup`

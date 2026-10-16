@@ -117,7 +117,16 @@ function measure(): Record<string, unknown> {
         colors: colors.length,
         bodyColor: content ? getComputedStyle(content).color : null,
         copyButton: q('.code-copy-btn').length,
-        langLabel: q('.cm-md-codeinfo').length
+        langLabel: q('.cm-md-codeinfo').length,
+        // #154：代码块的底色必须画在选区层下面。底色若压在上面，代码块里选中
+        // 看不到高亮，只有代码块两侧多出一条色带。
+        lineBg: (block[1] || block[0]) ? getComputedStyle(block[1] || block[0]).backgroundColor : null,
+        underBg: (block[1] || block[0]) ? getComputedStyle(block[1] || block[0], '::before').backgroundColor : null,
+        underZ: (block[1] || block[0]) ? getComputedStyle(block[1] || block[0], '::before').zIndex : null,
+        selLayerZ: (() => {
+          const sel = document.querySelector('.cm-selectionLayer')
+          return sel ? getComputedStyle(sel).zIndex : null
+        })()
       }
     })(),
     frontmatter: {
@@ -251,7 +260,19 @@ export async function runFeaturesCheck(): Promise<FeaturesCheckResult> {
   const hr = m.hr as { count: number }
   const math = m.math as { katex: number; block: number; error: number }
   const mermaid = m.mermaid as { ready: number; svg: number; failed: number }
-  const code = m.code as { lines: number; fenceVisible: boolean | null; tokens: number; colors: number; bodyColor: string | null; copyButton: number; langLabel: number }
+  const code = m.code as {
+    lines: number
+    fenceVisible: boolean | null
+    tokens: number
+    colors: number
+    bodyColor: string | null
+    copyButton: number
+    langLabel: number
+    lineBg: string | null
+    underBg: string | null
+    underZ: string | null
+    selLayerZ: string | null
+  }
   const frontmatter = m.frontmatter as { count: number; color: string; bodyColor: string }
   const footnote = m.footnote as { refs: number; previewCard: number; raw: boolean | null }
   const html = m.html as { rendered: number; raw: boolean | null }
@@ -279,6 +300,14 @@ export async function runFeaturesCheck(): Promise<FeaturesCheckResult> {
   push('代码语法高亮', { tokens: code.tokens, colors: code.colors })
   push('语言名压淡', code.langLabel)
   push('代码块复制按钮', code.copyButton)
+  // #154：底色压在选区层上面，代码块里选中就看不到高亮。判据是层序：
+  // 行自己的底色必须透明，底色画在 z-index 更小（更靠下）的伪元素上。
+  push('代码块底色不压住选区（#154）', {
+    lineBg: code.lineBg,
+    underBg: code.underBg,
+    underZ: code.underZ,
+    selLayerZ: code.selLayerZ
+  })
   // 属性区现在的产品行为是「收起」（光标不在里面就不画任何东西，见 live-preview.ts 的
   // collectFrontmatter），不是旧 Electron 版的「压淡」。所以断言改成：光标不在属性区里
   // 时，属性区不该渲染出来（count === 0）。

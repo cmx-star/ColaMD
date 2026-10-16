@@ -184,13 +184,30 @@
 /* 逐行加底色，首末行加圆角，拼出整块的外形（旧版 pre 是 16px 内边距、圆角 6px）。
  * 不用真 <pre> 是因为 CM6 的行是一个个 div，插不了包住多行的元素。 */
 .cm-content .cm-md-codeblock {
-  background: var(--code-block-bg);
+  /* 底色本身在 ::before 上，位置因此需要 relative（见下一条）。 */
+  position: relative;
   color: var(--code-block-text, var(--text-color));
   font-family: var(--font-mono);
   font-size: 0.875em;
   line-height: 1.6;
   padding-left: 1em;
   padding-right: 1em;
+}
+
+/* 代码块的底色。
+ *
+ * 不能直接把 background 写在行元素上：CodeMirror 的选区层（.cm-selectionLayer）是
+ * z-index -2 的兄弟层，行底色会盖在它上面 —— 代码块里选中看不到高亮，只有代码块两侧
+ * 多出一条色带（2026-10-12 报的 #154）。把底色挪到 z-index -3 的伪元素上，色带就落在
+ * 底色之上、文字之下：高亮看得见，代码文字本身不被染色。 */
+.cm-content .cm-md-codeblock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  border-radius: inherit;
+  background: var(--code-block-bg);
+  pointer-events: none;
 }
 
 .cm-content .cm-md-codeblock-first {

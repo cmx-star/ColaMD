@@ -319,9 +319,24 @@ function isActiveLine(_state: EditorState, _pos: number): boolean {
   return false
 }
 
-/** 跨行的块（表格、公式、属性区）同理：只有光标落在块里才露出源码。 */
+/** 行内的替换区间（链接地址、图片源码）不在露源码之列：那些文字本来就在眼前。 */
 function isActiveRange(_state: EditorState, _from: number, _to: number): boolean {
   return false
+}
+
+/**
+ * 块级 widget（表格、图、HTML 块、块公式）的判据：光标落进块里就露源码。
+ *
+ * 这些块是把**整段源码**替换成渲染结果的，光标一落进去，打出来的字写进的是被盖住的
+ * 源码。所以光标进块时把源码露出来，点走再渲染回去。Obsidian 对表格就是这么做的，
+ * 也是 2026-10-15 对 #153 的裁定。
+ *
+ * 行内的标记不在此列（2026-10-06 定）：光标所在的行不再整行露源码，要改标记去源码模式。
+ * 两端都算在内：点表格落在源码第一行开头，那是块的起点，也算「在里面」。
+ */
+function isBlockActive(state: EditorState, from: number, to: number): boolean {
+  const sel = state.selection.main
+  return sel.from >= from && sel.to <= to
 }
 
 // ─── 公式 ────────────────────────────────────────────────────────────────────
@@ -406,8 +421,8 @@ function collectMath(state: EditorState, ranges: DecorationRange[]): void {
   const excluded: Excluded[] = excludedRanges(text, syntaxTree(state))
 
   for (const range of scanMath(text, excluded)) {
-    // 光标所在行不画，退回源码，方便编辑；但定界符不属于正文，标出来让复制丢掉它
-    if (isActiveLine(state, range.from)) {
+    // 块公式：光标落进去就退回源码，就地改（行内公式的判据见上，保持不露）
+    if (isActiveLine(state, range.from) || (range.block && isBlockActive(state, range.from, range.to))) {
       const delim = range.block ? 2 : 1
       ranges.push({ from: range.from, to: range.from + delim, deco: MARK({ class: 'cm-md-marker' }) })
       ranges.push({ from: range.to - delim, to: range.to, deco: MARK({ class: 'cm-md-marker' }) })
@@ -540,7 +555,7 @@ function collectMermaid(state: EditorState, ranges: DecorationRange[], front: Ra
       if (firstLineEnd === -1) return
       const opening = text.slice(node.from, firstLineEnd).trim()
       if (!/^(`{3,}|~{3,})\s*mermaid\s*$/.test(opening)) return
-      if (isActiveRange(state, node.from, node.to)) return
+      if (isBlockActive(state, node.from, node.to)) return
       // 去掉开头的 ```mermaid 行与结尾的 ```
       const bodyStart = firstLineEnd + 1
       const lastLineStart = text.lastIndexOf('\n', node.to - 1)
@@ -726,8 +741,8 @@ function appendInline(parent: HTMLElement, text: string, base: string | null): v
 function collectTables(state: EditorState, ranges: DecorationRange[], front: Range | null): void {
   iterateContent(state, front, (node) => {
       if (node.name !== 'Table') return
-      // 光标在表格里就退回源码：改表格就是改文字
-      if (isActiveRange(state, node.from, node.to)) {
+      // 光标在表格里就退回源码：改表格就是改文字（#153）
+      if (isBlockActive(state, node.from, node.to)) {
         pushBlockLines(state, node.from, node.to, 'cm-md-table', ranges)
         return false
       }
@@ -900,7 +915,7 @@ function collectHTML(state: EditorState, ranges: DecorationRange[], front: Range
   iterateContent(state, front, (node) => {
     const block = node.name === 'HTMLBlock'
     if (!block && node.name !== 'HTMLTag') return
-    if (block ? isActiveRange(state, node.from, node.to) : isActiveLine(state, node.from)) return false
+    if (block ? isBlockActive(state, node.from, node.to) : isActiveLine(state, node.from)) return false
     if (!block) {
       if (paired.has(node.from)) return false
       const pair = inlinePair(state, node.from, node.to)

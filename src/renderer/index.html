@@ -6,7 +6,7 @@
   <!-- img-src 放行 `asset:`：本地图片由 Tauri 的 asset 协议送达（Windows 上是
        `http://asset.localhost/...`，已含在 http: 里）。`file:` 是 Electron 时代的
        老路，留着重开那条路不会更松。 -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' asset: data: blob: https: http: file:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' asset: data: blob: https: http: file:;">
   <title>loomark</title>
   <!-- Keep the titlebar stable before the renderer CSS bundle loads. -->
   <style>
